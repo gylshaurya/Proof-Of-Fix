@@ -1,2 +1,17 @@
 .DS_Store
 .vscode/
+.env
+.env.local
+
+out/
+cache/
+broadcast/
+lib/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+yolov8n.pt
+all_civic_results.json
+civic_issues_formatted.json
