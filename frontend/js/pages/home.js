@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   } = await supabase.auth.getSession();
   
   if (!session) {
-    window.location.href = "../html/login.html";
+    window.location.href = "../pages/login.html";
     return;
   }
   
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await supabase.auth.signOut();
     
     setTimeout(() => {
-      window.location.href = "../html/index.html";
+      window.location.href = "../pages/index.html";
     }, 100);
   });
 });
@@ -88,7 +88,7 @@ async function loadProblemCardsForLocality(userLocality) {
 `;
     
     card.addEventListener("click", () => {
-      window.location.href = `../html/problem.html?problemId=${problem.id}`;
+      window.location.href = `../pages/problem.html?problemId=${problem.id}`;
     });
     
     container.appendChild(card);

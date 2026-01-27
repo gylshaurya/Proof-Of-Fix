@@ -1,4 +1,4 @@
-import { getVotingContract } from "./blockchain.js";
+import { getVotingContract } from "../../blockchain.js";
 
 export async function castVote(chainProblemId, votes) {
   const voting = await getVotingContract();

@@ -3,43 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <title>Home | Civic Accountability</title>
-
   <link rel="stylesheet" href="../css/home.css" />
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
 </head>
-
 <body>
   <header class="app-header">
     <div class="header-left">
       <h1>Civic Dashboard</h1>
       <p>Local issues in your neighborhood</p>
     </div>
-
     <div class="header-right">
       <button id="logout" class="logout-btn">Logout</button>
     </div>
   </header>
-
   <main class="main-container">
-
     <section class="user-card">
-      <div id="user-info">Loading user info…</div>
-
+      <div id="user-info">Loading user info...</div>
       <button id="contractor-btn" class="contractor-btn" style="display:none;">
         Contractor Dashboard
       </button>
     </section>
-
     <section class="problems-section">
       <h2>Active Problems</h2>
-
-      <div id="cards-container" class="cards-grid">
-      </div>
+      <div id="cards-container" class="cards-grid"></div>
     </section>
-
   </main>
   <script type="module" src="../js/supabaseClient.js"></script>
-  <script type="module" src="../js/home.js"></script>
-
+  <script type="module" src="../js/pages/home.js"></script>
 </body>
 </html>
