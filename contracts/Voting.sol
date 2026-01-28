@@ -23,12 +23,12 @@ contract Voting {
 
     mapping(bytes32 => Problem) public problems;
     mapping(address => uint256) public credits;
+    mapping(address => uint256) public creditRound;
     mapping(address => mapping(bytes32 => uint256)) public userVotes;
     mapping(bytes32 => mapping(address => bool)) public completionVoted;
 
     uint256 public constant INITIAL_CREDITS = 100;
     uint256 public currentRound;
-    mapping(address => uint256) public lastRoundCredited;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
@@ -37,12 +37,13 @@ contract Voting {
 
     constructor() {
         owner = msg.sender;
+        currentRound = 1;
     }
 
-    function _bootstrap(address user) internal {
-        if (lastRoundCredited[user] < currentRound || credits[user] == 0) {
+    function _syncCredits(address user) internal {
+        if (creditRound[user] < currentRound) {
+            creditRound[user] = currentRound;
             credits[user] = INITIAL_CREDITS;
-            lastRoundCredited[user] = currentRound;
         }
     }
 
@@ -53,8 +54,9 @@ contract Voting {
     }
 
     function vote(bytes32 id, uint256 additionalVotes) external {
-        require(additionalVotes > 0, "invalid");
-        _bootstrap(msg.sender);
+        require(additionalVotes > 0, "invalid vote count");
+
+        _syncCredits(msg.sender);
         _ensure(id);
 
         Problem storage p = problems[id];
@@ -97,11 +99,16 @@ contract Voting {
 
     function voteCompletion(bytes32 id, bool solved) external {
         Problem storage p = problems[id];
-        require(p.exists && p.phase == Phase.CompletionVoting, "bad");
+        require(p.exists && p.phase == Phase.CompletionVoting, "not open");
         require(!completionVoted[id][msg.sender], "already voted");
 
         completionVoted[id][msg.sender] = true;
         solved ? p.yesVotes++ : p.noVotes++;
+    }
+
+    function creditsOf(address user) external view returns (uint256) {
+        if (creditRound[user] < currentRound) return INITIAL_CREDITS;
+        return credits[user];
     }
 
     function getTotalVotes(bytes32 id) external view returns (uint256) {
