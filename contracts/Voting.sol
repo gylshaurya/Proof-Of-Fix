@@ -17,6 +17,7 @@ contract Voting {
         uint256 totalVotes;
         uint256 yesVotes;
         uint256 noVotes;
+        address contractor;
     }
 
     address public owner;
@@ -40,6 +41,11 @@ contract Voting {
         currentRound = 1;
     }
 
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "zero address");
+        owner = newOwner;
+    }
+
     function _syncCredits(address user) internal {
         if (creditRound[user] < currentRound) {
             creditRound[user] = currentRound;
@@ -47,9 +53,11 @@ contract Voting {
         }
     }
 
-    function _ensure(bytes32 id) internal {
-        if (!problems[id].exists) {
-            problems[id] = Problem(true, Phase.InitialVoting, 0, 0, 0);
+    function _ensure(bytes32 id) internal returns (Problem storage p) {
+        p = problems[id];
+        if (!p.exists) {
+            p.exists = true;
+            p.phase = Phase.InitialVoting;
         }
     }
 
@@ -57,9 +65,7 @@ contract Voting {
         require(additionalVotes > 0, "invalid vote count");
 
         _syncCredits(msg.sender);
-        _ensure(id);
-
-        Problem storage p = problems[id];
+        Problem storage p = _ensure(id);
         require(p.phase == Phase.InitialVoting, "voting closed");
 
         uint256 currentVotes = userVotes[msg.sender][id];
@@ -77,33 +83,45 @@ contract Voting {
         currentRound++;
     }
 
-    function moveToUnderProgress(bytes32 id) external {
-        _ensure(id);
-        require(problems[id].phase == Phase.InitialVoting, "bad phase");
-        problems[id].phase = Phase.UnderProgress;
+    function moveToUnderProgress(bytes32 id) external onlyOwner {
+        Problem storage p = _ensure(id);
+        require(p.phase == Phase.InitialVoting, "bad phase");
+        p.phase = Phase.UnderProgress;
+    }
+
+    function assignContractor(bytes32 id, address contractor) external onlyOwner {
+        require(contractor != address(0), "zero address");
+        Problem storage p = problems[id];
+        require(p.exists && p.phase == Phase.UnderProgress, "bad phase");
+        p.contractor = contractor;
     }
 
     function startCompletionVoting(bytes32 id) external {
-        _ensure(id);
-        require(problems[id].phase == Phase.UnderProgress, "bad phase");
-        problems[id].phase = Phase.CompletionVoting;
+        Problem storage p = problems[id];
+        require(p.exists && p.phase == Phase.UnderProgress, "bad phase");
+        require(msg.sender == owner || msg.sender == p.contractor, "not allowed");
+        p.phase = Phase.CompletionVoting;
     }
 
-    function closeCompletionVoting(bytes32 id) external {
-        require(problems[id].phase == Phase.CompletionVoting, "bad phase");
-        problems[id].phase =
-            problems[id].yesVotes > problems[id].noVotes
-                ? Phase.Completed
-                : Phase.Failed;
+    function closeCompletionVoting(bytes32 id) external onlyOwner {
+        Problem storage p = problems[id];
+        require(p.phase == Phase.CompletionVoting, "bad phase");
+        p.phase = p.yesVotes > p.noVotes ? Phase.Completed : Phase.Failed;
     }
 
     function voteCompletion(bytes32 id, bool solved) external {
         Problem storage p = problems[id];
         require(p.exists && p.phase == Phase.CompletionVoting, "not open");
         require(!completionVoted[id][msg.sender], "already voted");
+        require(msg.sender != p.contractor, "contractor cannot vote");
 
         completionVoted[id][msg.sender] = true;
-        solved ? p.yesVotes++ : p.noVotes++;
+
+        if (solved) {
+            p.yesVotes++;
+        } else {
+            p.noVotes++;
+        }
     }
 
     function creditsOf(address user) external view returns (uint256) {
@@ -121,6 +139,10 @@ contract Voting {
 
     function getCompletionVotes(bytes32 id) external view returns (uint256, uint256) {
         return (problems[id].yesVotes, problems[id].noVotes);
+    }
+
+    function hasVotedCompletion(bytes32 id, address user) external view returns (bool) {
+        return completionVoted[id][user];
     }
 
     function getPhase(bytes32 id) external view returns (Phase) {
