@@ -36,6 +36,15 @@ contract Voting {
     mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) private roundVotes;
     mapping(uint256 => mapping(bytes32 => mapping(address => bool))) private roundCompletionVoted;
 
+    event RoundStarted(uint256 indexed round);
+    event VoteCast(bytes32 indexed id, address indexed voter, uint256 votes, uint256 cost);
+    event PhaseChanged(bytes32 indexed id, Phase phase);
+    event ContractorAssigned(bytes32 indexed id, address indexed contractor);
+    event CompletionVoteCast(bytes32 indexed id, address indexed voter, bool solved);
+    event CompletionClosed(bytes32 indexed id, uint256 yesVotes, uint256 noVotes, bool approved);
+    event QuorumUpdated(uint256 quorum);
+    event OwnershipTransferred(address indexed from, address indexed to);
+
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
         _;
@@ -45,20 +54,24 @@ contract Voting {
         owner = msg.sender;
         currentRound = 1;
         completionQuorum = 2;
+        emit RoundStarted(1);
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "zero address");
+        emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 
     function setCompletionQuorum(uint256 quorum) external onlyOwner {
         require(quorum > 0, "zero quorum");
         completionQuorum = quorum;
+        emit QuorumUpdated(quorum);
     }
 
     function newRound() external onlyOwner {
         currentRound++;
+        emit RoundStarted(currentRound);
     }
 
     function _syncCredits(address user) internal {
@@ -75,6 +88,7 @@ contract Voting {
             p.exists = true;
             p.phase = Phase.InitialVoting;
             p.round = currentRound;
+            emit PhaseChanged(id, Phase.InitialVoting);
             return p;
         }
 
@@ -86,6 +100,7 @@ contract Voting {
             p.noVotes = 0;
             p.completionDeadline = 0;
             p.contractor = address(0);
+            emit PhaseChanged(id, Phase.InitialVoting);
         }
     }
 
@@ -106,12 +121,14 @@ contract Voting {
         roundVotes[currentRound][msg.sender][id] = newTotal;
         p.totalVotes += additionalVotes;
 
+        emit VoteCast(id, msg.sender, additionalVotes, cost);
     }
 
     function moveToUnderProgress(bytes32 id) external onlyOwner {
         Problem storage p = _ensure(id);
         require(p.phase == Phase.InitialVoting, "bad phase");
         p.phase = Phase.UnderProgress;
+        emit PhaseChanged(id, Phase.UnderProgress);
     }
 
     function assignContractor(bytes32 id, address contractor) external onlyOwner {
@@ -119,6 +136,7 @@ contract Voting {
         Problem storage p = problems[id];
         require(p.exists && p.phase == Phase.UnderProgress, "bad phase");
         p.contractor = contractor;
+        emit ContractorAssigned(id, contractor);
     }
 
     function startCompletionVoting(bytes32 id) external {
@@ -128,6 +146,7 @@ contract Voting {
 
         p.phase = Phase.CompletionVoting;
         p.completionDeadline = uint64(block.timestamp) + COMPLETION_WINDOW;
+        emit PhaseChanged(id, Phase.CompletionVoting);
     }
 
     function voteCompletion(bytes32 id, bool solved) external {
@@ -145,6 +164,7 @@ contract Voting {
             p.noVotes++;
         }
 
+        emit CompletionVoteCast(id, msg.sender, solved);
     }
 
     function closeCompletionVoting(bytes32 id) external {
@@ -160,6 +180,8 @@ contract Voting {
         bool approved = castVotes >= completionQuorum && p.yesVotes > p.noVotes;
         p.phase = approved ? Phase.Completed : Phase.Failed;
 
+        emit CompletionClosed(id, p.yesVotes, p.noVotes, approved);
+        emit PhaseChanged(id, p.phase);
     }
 
     function creditsOf(address user) external view returns (uint256) {
