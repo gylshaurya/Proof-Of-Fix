@@ -1,6 +1,3 @@
-/* =========================
-   GLOBAL RESET & BASE
-========================= */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -8,223 +5,233 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
-  background: #f4f7fb;
-  color: #1f2937;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
   line-height: 1.6;
-  padding: 40px 16px;
 }
 
-/* =========================
-   MAIN CONTAINER
-========================= */
-.problem-container {
-  max-width: 900px;
-  margin: 0 auto;
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 28px 32px 32px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+.page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 
-/* =========================
-   IMAGE
-========================= */
-.problem-container img {
-  width: 100%;
-  max-height: 360px;
-  object-fit: cover;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-/* =========================
-   TITLE & META
-========================= */
-#problemTitle {
-  font-size: 28px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 8px;
-}
-
-.meta {
+.back-link {
   font-size: 14px;
-  color: #4b5563;
-  margin-bottom: 16px;
-}
-
-.meta span {
-  margin-right: 10px;
-}
-
-/* =========================
-   DESCRIPTION
-========================= */
-#description {
-  font-size: 16px;
-  color: #374151;
-  margin-bottom: 24px;
-}
-
-/* =========================
-   DETAILS SECTION
-========================= */
-.details {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 16px 18px;
-  margin-bottom: 24px;
-}
-
-.details p {
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: #374151;
-}
-
-.details code {
-  display: block;
-  font-size: 13px;
-  background: #eef4ff;
-  color: #1e3a8a;
-  padding: 8px 10px;
-  border-radius: 6px;
-  word-break: break-all;
-  margin-top: 6px;
-}
-
-/* =========================
-   VOTING SECTION
-========================= */
-#votingSection {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 20px;
-}
-
-#votingSection h3 {
-  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 12px;
-  color: #111827;
+  color: var(--brand);
+  text-decoration: none;
 }
 
-/* Input */
-#voteInput {
+.back-link:hover { text-decoration: underline; }
+
+.problem-container {
+  max-width: 780px;
+  margin: 32px auto;
+  padding: 28px 32px 36px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+#problemImage {
   width: 100%;
-  max-width: 240px;
-  padding: 10px 12px;
-  font-size: 15px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  outline: none;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 22px;
+}
+
+#problemTitle {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
   margin-bottom: 10px;
 }
 
-#voteInput:focus {
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
 }
 
-/* Cost preview */
+#description {
+  font-size: 15px;
+  color: var(--ink-soft);
+  margin-bottom: 26px;
+}
+
+.details {
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 16px;
+  margin-bottom: 26px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.detail-row:last-child { border-bottom: 0; }
+
+.detail-stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.detail-label {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.chain-id {
+  display: block;
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--brand-dark);
+  background: var(--brand-wash);
+  padding: 8px 10px;
+  border-radius: 6px;
+  word-break: break-all;
+}
+
+.remark-block {
+  padding: 16px 18px;
+  background: var(--warn-wash);
+  border-radius: var(--radius-sm);
+  margin-bottom: 26px;
+}
+
+.remark-block h3 {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--warn);
+  margin-bottom: 6px;
+}
+
+.remark-block p {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+#votingSection,
+#completionVoting,
+.history {
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+#votingSection h3,
+#completionVoting h3,
+.history h3 {
+  font-size: 17px;
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+
+#votingSection .section-hint,
+#completionVoting .section-hint {
+  margin-bottom: 14px;
+}
+
+.vote-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#voteInput {
+  width: 130px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+#voteInput:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-wash);
+}
+
 #voteCostPreview {
   font-size: 14px;
-  color: #2563eb;
-  margin-bottom: 12px;
+  margin-top: 10px;
+  min-height: 21px;
 }
 
-/* Vote button */
-#voteBtn {
-  display: inline-block;
-  padding: 10px 18px;
-  background: #4a90e2;
-  color: #ffffff;
-  font-size: 15px;
+.cost-ok { color: var(--brand-dark); }
+.cost-over { color: var(--bad); font-weight: 600; }
+
+.countdown {
+  font-size: 13px;
   font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  color: var(--warn);
+  margin-top: 12px;
 }
 
-#voteBtn:hover {
-  background: #357abd;
+.completion-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
 }
 
-#voteBtn:active {
-  transform: translateY(1px);
-}
-
-/* =========================
-   USER STATS
-========================= */
-#myVotes,
-#chainTotalVotes,
-#myCredits {
+.stat-pill {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
-  margin-top: 6px;
-  color: #374151;
 }
 
-/* =========================
-   COMPLETION VOTING
-========================= */
-#completionVoting {
-  margin-top: 24px;
-  border-top: 1px dashed #e5e7eb;
-  padding-top: 20px;
+.stat-pill strong {
+  font-size: 17px;
+  margin-right: 4px;
 }
 
-#completionVoting h3 {
-  font-size: 18px;
-  margin-bottom: 12px;
-}
+.stat-yes { background: var(--good-wash); color: var(--good); }
+.stat-no { background: var(--bad-wash); color: var(--bad); }
 
-#completionVoting button {
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  margin-right: 10px;
-}
-
-/* Yes */
-#yesBtn {
-  background: #4a90e2;
-  color: white;
-}
-
-#yesBtn:hover {
-  background: #357abd;
-}
-
-/* No */
-#noBtn {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-#noBtn:hover {
-  background: #d1d5db;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
 @media (max-width: 640px) {
   .problem-container {
-    padding: 20px;
+    margin: 16px 12px;
+    padding: 20px 18px 28px;
+    border-radius: var(--radius-sm);
   }
 
-  #problemTitle {
-    font-size: 22px;
-  }
+  #problemTitle { font-size: 21px; }
+  #voteInput { width: 100%; }
+  .vote-row .btn { flex: 1 1 auto; }
 
-  #voteInput {
-    max-width: 100%;
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
   }
 }

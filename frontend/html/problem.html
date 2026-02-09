@@ -1,82 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Problem Details</title>
-    
-    <link rel="stylesheet" href="../css/problem.css" />
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = "https://boocborspzmgivjqrahr.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_LB3wTXMuOHWjK8n5tGA6LQ_pnWwplGP";
-        window.supabaseClient = supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-        );
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Issue details | Proof of Fix</title>
+  <link rel="stylesheet" href="../css/ui.css" />
+  <link rel="stylesheet" href="../css/problem.css" />
 </head>
 
 <body>
-    <div class="problem-container">
-        
-        <img id="problemImage" hidden />
-        
-        <h1 id="problemTitle"></h1>
-        
-        <div class="meta">
-            <span id="status"></span> |
-            <span id="locality"></span>
-        </div>
-        
-        <p id="description"></p>
-        
-        <hr />
-        
-        <div class="details">
-            <p id="cost"></p>
-            <p><strong>On-chain Problem ID:</strong></p>
-            <code id="chainProblemId"></code>
-            
-            <p id="chainTotalVotes"></p>
-            <p id="myVotes"></p>
-            <p id="myCredits"></p>
-            <p id="completionStats"></p>
-        </div>
-        
-        <div id="txInfo" hidden>
-            <p>
-                Transaction submitted:
-                <a id="txLink" target="_blank"></a>
-            </p>
-        </div>
-        
-        
-        
-        
-        <div id="votingSection" hidden>
-            <h3>Cast Vote (Quadratic Voting)</h3>
-            
-            <input
-            type="number"
-            id="voteInput"
-            min="1"
-            placeholder="Number of votes"
-            />
-            
-            <p id="voteCostPreview"></p>
-            
-            <button id="voteBtn">Submit Vote</button>
-        </div>
-        
-        <!-- COMPLETION VOTING -->
-        <div id="completionVoting" hidden>
-            <h3>Completion Approval</h3>
-            <button id="yesBtn">Yes, Solved</button>
-            <button id="noBtn">No, Not Solved</button>
-        </div>
-        
+  <header class="page-bar">
+    <a href="home.html" class="back-link">Back to dashboard</a>
+    <button id="logoutBtn" class="btn btn-ghost">Log out</button>
+  </header>
+
+  <div class="problem-container">
+    <div id="walletNotice" class="notice notice-warn" hidden>
+      MetaMask is required to vote and to read on-chain data for this issue.
     </div>
-    
-    <script type="module" src="../js/problem.js"></script>
+
+    <img id="problemImage" hidden alt="" />
+
+    <h1 id="problemTitle"></h1>
+
+    <div class="meta">
+      <span id="status" class="status-badge"></span>
+      <span id="locality"></span>
+    </div>
+
+    <p id="description"></p>
+
+    <section class="details">
+      <div class="detail-row">
+        <span class="detail-label">Estimated cost</span>
+        <span id="cost" class="detail-value"></span>
+      </div>
+      <div class="detail-row" id="contractorRow" hidden>
+        <span class="detail-label">Contractor</span>
+        <code id="contractorWallet" class="detail-value"></code>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Total votes</span>
+        <span id="chainTotalVotes" class="detail-value">0</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Your votes here</span>
+        <span id="myVotes" class="detail-value">0</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Credits left</span>
+        <span id="myCredits" class="detail-value">0</span>
+      </div>
+      <div class="detail-row detail-stack">
+        <span class="detail-label">On-chain ID</span>
+        <code id="chainProblemId" class="chain-id"></code>
+      </div>
+    </section>
+
+    <section id="remarkRow" class="remark-block" hidden>
+      <h3>Latest update from the contractor</h3>
+      <p id="contractorRemark"></p>
+    </section>
+
+    <div id="txInfo" class="notice notice-info" hidden>
+      Transaction submitted: <a id="txLink" target="_blank" rel="noreferrer"></a>
+    </div>
+
+    <section id="votingSection" hidden>
+      <h3>Cast your vote</h3>
+      <p class="section-hint">Votes cost credits quadratically, so 3 votes cost 9 credits.</p>
+      <div class="vote-row">
+        <input type="number" id="voteInput" min="1" step="1" placeholder="Votes" />
+        <button id="voteBtn" class="btn btn-primary">Submit vote</button>
+      </div>
+      <p id="voteCostPreview"></p>
+    </section>
+
+    <section id="completionVoting" hidden>
+      <h3>Did they fix it?</h3>
+      <p class="section-hint">Your verification decides whether the remaining funds are released.</p>
+      <div class="vote-row">
+        <button id="yesBtn" class="btn btn-primary">Yes, it is fixed</button>
+        <button id="noBtn" class="btn btn-danger">No, still broken</button>
+      </div>
+    </section>
+
+    <p id="completionCountdown" class="countdown" hidden></p>
+    <p id="alreadyCompletionVotedMsg" class="notice notice-info" hidden></p>
+
+    <section id="completionStats" class="completion-stats" hidden>
+      <div class="stat-pill stat-yes"><strong id="yesCount">0</strong> approved</div>
+      <div class="stat-pill stat-no"><strong id="noCount">0</strong> rejected</div>
+    </section>
+
+    <section class="history">
+      <h3>Vote history</h3>
+      <ul id="voteHistory" class="tx-list"></ul>
+    </section>
+
+    <section class="history">
+      <h3>Treasury activity</h3>
+      <ul id="escrowTxList" class="tx-list"></ul>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="../js/supabaseClient.js"></script>
+  <script type="module" src="../js/pages/problem.js"></script>
 </body>
 </html>

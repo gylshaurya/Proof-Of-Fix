@@ -1,196 +1,406 @@
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
-import { castVote } from "./vote/vote.js";
-import { voteCompletion } from "./vote/completionVote.js";
-import { getVotingContract } from "../blockchain.js";
-import { TREASURY_ADDRESS } from "../config.js";
-import treasuryABI from "../abis/TreasuryABI.js";
+import {
+  ethers,
+  connect,
+  currentAddress,
+  getVotingContract,
+  readVotingContract,
+  readTreasuryContract,
+  toChainId,
+  txUrl,
+  hasWallet,
+} from "../blockchain.js";
+import { client, requireProfile, bindLogout } from "../lib/session.js";
+import { h, fill, setText, show } from "../lib/dom.js";
+import { toast, readableError, withBusy, emptyState } from "../lib/ui.js";
+import { rupees, shortAddress, shortHash, timeLeft } from "../lib/format.js";
+import { STATUS, STATUS_LABEL, DEPLOY_BLOCK } from "../config.js";
 
-const TREASURY_DEPLOY_BLOCK = 10133869;
+const MAX_VOTES = 10;
 
-function toChainId(uuid) {
-  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(uuid));
-}
-
-async function loadEscrowTransactions(chainProblemId) {
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const treasury = new ethers.Contract(TREASURY_ADDRESS, treasuryABI, provider);
-  return {
-    created: await treasury.queryFilter(treasury.filters.EscrowCreated(chainProblemId), TREASURY_DEPLOY_BLOCK),
-    advances: await treasury.queryFilter(treasury.filters.AdvanceReleased(chainProblemId), TREASURY_DEPLOY_BLOCK),
-    finals: await treasury.queryFilter(treasury.filters.FinalReleased(chainProblemId), TREASURY_DEPLOY_BLOCK),
-    failed: await treasury.queryFilter(treasury.filters.EscrowFailed(chainProblemId), TREASURY_DEPLOY_BLOCK),
-  };
-}
-
-async function renderEscrowTxs(chainProblemId) {
-  const list = document.getElementById("escrowTxList");
-  list.innerHTML = "";
-
-  const { created, advances, finals, failed } = await loadEscrowTransactions(chainProblemId);
-
-  function addTx(label, e) {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <strong>${label}</strong>:
-      <a href="https://sepolia.etherscan.io/tx/${e.transactionHash}" target="_blank">
-        ${e.transactionHash}
-      </a>
-    `;
-    list.appendChild(li);
-  }
-
-  created.forEach(e => addTx("Escrow Created", e));
-  advances.forEach(e => addTx("Advance Paid", e));
-  finals.forEach(e => addTx("Final Payment", e));
-  failed.forEach(e => addTx("Escrow Failed", e));
-
-  if (!list.children.length) list.innerHTML = "<li>No contractor payments yet</li>";
-}
-
-function showTx(hash) {
-  const txInfo = document.getElementById("txInfo");
-  const txLink = document.getElementById("txLink");
-  if (!txInfo || !txLink) return;
-  txLink.href = `https://sepolia.etherscan.io/tx/${hash}`;
-  txLink.innerText = hash;
-  txInfo.hidden = false;
-}
+let problem;
+let chainId;
+let voting;
+let account;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const supabase = window.supabaseClient;
-  if (!supabase) return;
+  const context = await requireProfile("id, locality, wallet, isContractor");
+  if (!context) return;
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = "../html/login.html";
+  bindLogout("#logoutBtn");
+
+  const problemId = new URLSearchParams(window.location.search).get("problemId");
+  if (!problemId) {
+    fill(document.querySelector(".problem-container"), emptyState("No problem selected"));
     return;
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const problemUUID = params.get("problemId");
-  if (!problemUUID) return;
+  chainId = toChainId(problemId);
 
-  const chainProblemId = toChainId(problemUUID);
-
-  const { data: p, error } = await supabase
+  const { data, error } = await client()
     .from("problems")
     .select("*")
-    .eq("id", problemUUID)
-    .single();
+    .eq("id", problemId)
+    .maybeSingle();
 
-  if (error || !p) { console.error(error); return; }
+  if (error || !data) {
+    console.error(error);
+    fill(document.querySelector(".problem-container"), emptyState("Problem not found"));
+    return;
+  }
 
-  document.getElementById("problemTitle").innerText = p.title;
-  document.getElementById("description").innerText = p.description;
-  document.getElementById("status").innerText = p.status;
-  document.getElementById("locality").innerText = p.locality;
-  document.getElementById("cost").innerText = `Estimated Cost: ₹${p.cost}`;
-  document.getElementById("chainProblemId").innerText = chainProblemId;
+  problem = data;
+  renderDetails();
 
-  if (p.image_url) {
+  if (!hasWallet()) {
+    show(document.getElementById("walletNotice"), true);
+    return;
+  }
+
+  voting = readVotingContract();
+
+  try {
+    await refreshStats();
+    await renderVoteHistory();
+    await renderEscrowTxs();
+  } catch (err) {
+    console.error(err);
+    toast("Could not read on-chain data", "error");
+  }
+
+  if (problem.status_code === STATUS.VOTING) await setupVoting(context.profile);
+  if (problem.status_code === STATUS.COMPLETION_VOTING) await setupCompletionVoting(context.profile);
+});
+
+function renderDetails() {
+  setText("#problemTitle", problem.title);
+  setText("#description", problem.description || "No description provided.");
+  setText("#locality", problem.locality);
+  setText("#cost", rupees(problem.cost));
+  setText("#chainProblemId", chainId);
+
+  const status = document.getElementById("status");
+  status.textContent = STATUS_LABEL[problem.status_code] ?? "Unknown";
+  status.className = `status-badge status-${problem.status_code}`;
+
+  if (problem.image_url) {
     const img = document.getElementById("problemImage");
-    img.src = p.image_url;
+    img.src = problem.image_url;
+    img.alt = problem.title;
     img.hidden = false;
   }
 
-  const voting = await getVotingContract();
-  const userAddress = await voting.signer.getAddress();
-
-  async function refreshStats() {
-    const totalVotes = await voting.getTotalVotes(chainProblemId);
-    const myVotes = await voting.getUserVotes(userAddress, chainProblemId);
-    const [yes, no] = await voting.getCompletionVotes(chainProblemId);
-
-    let credits = await voting.credits(userAddress);
-    if (credits.toString() === "0" && myVotes.toString() === "0") credits = 100;
-
-    document.getElementById("chainTotalVotes").innerText = `Total Votes: ${totalVotes}`;
-    document.getElementById("myVotes").innerText = `Your Votes on this problem: ${myVotes}`;
-    document.getElementById("myCredits").innerText = `Credits Left: ${credits}`;
-
-    if (p.status_code === 3) {
-      document.getElementById("completionStats").innerText =
-        `Completion Votes - Yes: ${yes} | No: ${no}`;
-    }
+  if (problem.contractor_wallet) {
+    setText("#contractorWallet", shortAddress(problem.contractor_wallet));
+    show(document.getElementById("contractorRow"), true);
   }
 
-  await refreshStats();
+  if (problem.remark) {
+    setText("#contractorRemark", problem.remark);
+    show(document.getElementById("remarkRow"), true);
+  }
+}
 
-  if (p.status_code === 1) {
-    const section = document.getElementById("votingSection");
-    section.hidden = false;
+async function currentAccount() {
+  if (!account) account = await connect();
+  return account;
+}
 
-    const currentVotes = Number(await voting.getUserVotes(userAddress, chainProblemId));
-    const voteInput = document.getElementById("voteInput");
-    const costPreview = document.getElementById("voteCostPreview");
+async function refreshStats() {
+  const address = account || (await currentAddress());
 
-    voteInput.addEventListener("input", () => {
-      const additional = Number(voteInput.value);
-      if (additional <= 0) { costPreview.innerText = ""; return; }
-      const newTotal = currentVotes + additional;
-      const cost = (newTotal * newTotal) - (currentVotes * currentVotes);
-      costPreview.innerText = `Adding ${additional} vote(s) costs ${cost} credits (${newTotal} total on this problem)`;
-    });
+  const [total, completion] = await Promise.all([
+    voting.getTotalVotes(chainId),
+    voting.getCompletionVotes(chainId),
+  ]);
 
-    document.getElementById("voteBtn").onclick = async () => {
-      const additional = Number(voteInput.value);
-      if (additional <= 0) return alert("Enter a valid number of votes");
+  setText("#chainTotalVotes", total.toString());
 
-      const newTotal = currentVotes + additional;
-      const cost = (newTotal * newTotal) - (currentVotes * currentVotes);
-      const actualCredits = Number(await voting.credits(userAddress));
+  let mine = 0;
+  let credits = 0;
 
-      if (cost > actualCredits) {
-        return alert(`Not enough credits. This costs ${cost} but you have ${actualCredits}.`);
-      }
+  if (address) {
+    const [userVotes, userCredits] = await Promise.all([
+      voting.getUserVotes(address, chainId),
+      voting.creditsOf(address),
+    ]);
+    mine = Number(userVotes);
+    credits = Number(userCredits);
+    setText("#myVotes", String(mine));
+    setText("#myCredits", String(credits));
+  } else {
+    setText("#myVotes", "connect wallet");
+    setText("#myCredits", "connect wallet");
+  }
 
+  if (problem.status_code === STATUS.COMPLETION_VOTING) {
+    setText("#yesCount", completion[0].toString());
+    setText("#noCount", completion[1].toString());
+    show(document.getElementById("completionStats"), true);
+  }
+
+  return { total, mine, credits };
+}
+
+function quadraticCost(current, additional) {
+  const next = current + additional;
+  return next * next - current * current;
+}
+
+async function setupVoting(profile) {
+  const section = document.getElementById("votingSection");
+  const input = document.getElementById("voteInput");
+  const preview = document.getElementById("voteCostPreview");
+  const button = document.getElementById("voteBtn");
+
+  show(section, true);
+  input.max = String(MAX_VOTES);
+
+  const initial = await refreshStats();
+  let currentVotes = initial.mine;
+  let credits = initial.credits;
+
+  input.addEventListener("input", () => {
+    const additional = Number(input.value);
+
+    if (!Number.isInteger(additional) || additional <= 0) {
+      preview.textContent = "";
+      preview.className = "";
+      return;
+    }
+
+    const cost = quadraticCost(currentVotes, additional);
+    const affordable = cost <= credits;
+
+    preview.textContent = affordable
+      ? `${additional} more vote(s) costs ${cost} credits, giving you ${currentVotes + additional} on this issue`
+      : `${cost} credits needed but you only have ${credits}`;
+    preview.className = affordable ? "cost-ok" : "cost-over";
+  });
+
+  button.addEventListener("click", async (event) => {
+    if (!profile.wallet) {
+      toast("Link your wallet on the dashboard first", "error");
+      return;
+    }
+
+    const additional = Number(input.value);
+
+    if (!Number.isInteger(additional) || additional <= 0) {
+      toast("Enter a whole number of votes", "error");
+      return;
+    }
+
+    if (additional > MAX_VOTES) {
+      toast(`You can add at most ${MAX_VOTES} votes at a time`, "error");
+      return;
+    }
+
+    await withBusy(event.currentTarget, "Confirm in wallet...", async () => {
       try {
-        const tx = await castVote(chainProblemId, additional);
-        alert("Vote recorded!");
+        const address = await currentAccount();
+
+        if (address.toLowerCase() !== profile.wallet.toLowerCase()) {
+          toast(`Switch to your linked wallet ${shortAddress(profile.wallet)}`, "error");
+          return;
+        }
+
+        const cost = quadraticCost(currentVotes, additional);
+        if (cost > credits) {
+          toast(`Not enough credits, this costs ${cost}`, "error");
+          return;
+        }
+
+        const contract = await getVotingContract();
+        const tx = await contract.vote(chainId, additional);
+
+        event.currentTarget.textContent = "Waiting for confirmation...";
+        await tx.wait();
+
         showTx(tx.hash);
+        toast("Vote recorded on chain", "success");
+        input.value = "";
+        preview.textContent = "";
+
+        const stats = await refreshStats();
+        currentVotes = stats.mine;
+        credits = stats.credits;
+
+        await syncVoteCount(stats.total);
+        await renderVoteHistory();
+      } catch (err) {
+        console.error(err);
+        toast(readableError(err), "error");
+      }
+    });
+  });
+}
+
+async function syncVoteCount(total) {
+  const { error } = await client()
+    .from("problems")
+    .update({ vote_count: Number(total) })
+    .eq("id", problem.id);
+
+  if (error) console.warn("vote count sync failed", error);
+}
+
+async function setupCompletionVoting(profile) {
+  const section = document.getElementById("completionVoting");
+  const notice = document.getElementById("alreadyCompletionVotedMsg");
+  const countdown = document.getElementById("completionCountdown");
+
+  const address = await currentAddress();
+  const [hasVoted, deadline] = await Promise.all([
+    address ? voting.hasVotedCompletion(chainId, address) : false,
+    voting.getCompletionDeadline(chainId),
+  ]);
+
+  const closesAt = Number(deadline);
+  if (closesAt > 0) {
+    const tick = () => setText(countdown, `Voting ${timeLeft(closesAt)}`);
+    tick();
+    setInterval(tick, 60000);
+    show(countdown, true);
+  }
+
+  const expired = closesAt > 0 && Date.now() / 1000 >= closesAt;
+  const isContractor =
+    address &&
+    problem.contractor_wallet &&
+    address.toLowerCase() === problem.contractor_wallet.toLowerCase();
+
+  if (hasVoted) {
+    setText(notice, "You have already voted on this completion.");
+    show(notice, true);
+    return;
+  }
+
+  if (isContractor) {
+    setText(notice, "Contractors cannot vote on their own work.");
+    show(notice, true);
+    return;
+  }
+
+  if (expired) {
+    setText(notice, "The completion voting window has closed.");
+    show(notice, true);
+    return;
+  }
+
+  show(section, true);
+
+  const cast = async (event, solved) => {
+    if (!profile.wallet) {
+      toast("Link your wallet on the dashboard first", "error");
+      return;
+    }
+
+    await withBusy(event.currentTarget, "Confirm in wallet...", async () => {
+      try {
+        const signerAddress = await currentAccount();
+
+        if (signerAddress.toLowerCase() !== profile.wallet.toLowerCase()) {
+          toast(`Switch to your linked wallet ${shortAddress(profile.wallet)}`, "error");
+          return;
+        }
+
+        const contract = await getVotingContract();
+        const tx = await contract.voteCompletion(chainId, solved);
+
+        event.currentTarget.textContent = "Waiting for confirmation...";
+        await tx.wait();
+
+        showTx(tx.hash);
+        toast(solved ? "Marked as solved" : "Marked as not solved", "success");
+
+        show(section, false);
+        setText(notice, "Your verification has been recorded.");
+        show(notice, true);
+
         await refreshStats();
       } catch (err) {
         console.error(err);
-        alert("Transaction failed: " + (err.reason || err.message));
+        toast(readableError(err), "error");
       }
-    };
+    });
+  };
+
+  document.getElementById("yesBtn").addEventListener("click", (e) => cast(e, true));
+  document.getElementById("noBtn").addEventListener("click", (e) => cast(e, false));
+}
+
+function showTx(hash) {
+  const info = document.getElementById("txInfo");
+  const link = document.getElementById("txLink");
+  if (!info || !link) return;
+
+  link.href = txUrl(hash);
+  link.textContent = shortHash(hash);
+  show(info, true);
+}
+
+async function renderVoteHistory() {
+  const list = document.getElementById("voteHistory");
+  if (!list) return;
+
+  const events = await voting.queryFilter(voting.filters.VoteCast(chainId), DEPLOY_BLOCK);
+
+  if (!events.length) {
+    fill(list, h("li", { class: "muted" }, "No votes cast yet"));
+    return;
   }
 
-  if (p.status_code === 3) {
-    const section = document.getElementById("completionVoting");
-    const hasVoted = await voting.completionVoted(chainProblemId, userAddress);
+  const rows = events
+    .slice(-15)
+    .reverse()
+    .map((event) =>
+      h(
+        "li",
+        null,
+        h("span", { class: "history-voter" }, shortAddress(event.args.voter)),
+        h("span", { class: "history-detail" }, `+${event.args.votes} votes, ${event.args.cost} credits`),
+        h(
+          "a",
+          { href: txUrl(event.transactionHash), target: "_blank", rel: "noreferrer", class: "history-link" },
+          "tx"
+        )
+      )
+    );
 
-    if (hasVoted) {
-      section.hidden = true;
-      document.getElementById("alreadyCompletionVotedMsg").hidden = false;
-    } else {
-      section.hidden = false;
+  fill(list, rows);
+}
 
-      document.getElementById("yesBtn").onclick = async () => {
-        try {
-          const tx = await voteCompletion(chainProblemId, true);
-          showTx(tx.hash);
-          await refreshStats();
-          section.hidden = true;
-          document.getElementById("alreadyCompletionVotedMsg").hidden = false;
-        } catch (err) {
-          alert("Transaction failed: " + (err.reason || err.message));
-        }
-      };
+async function renderEscrowTxs() {
+  const list = document.getElementById("escrowTxList");
+  if (!list) return;
 
-      document.getElementById("noBtn").onclick = async () => {
-        try {
-          const tx = await voteCompletion(chainProblemId, false);
-          showTx(tx.hash);
-          await refreshStats();
-          section.hidden = true;
-          document.getElementById("alreadyCompletionVotedMsg").hidden = false;
-        } catch (err) {
-          alert("Transaction failed: " + (err.reason || err.message));
-        }
-      };
-    }
-  }
+  const treasury = readTreasuryContract();
 
-  await renderEscrowTxs(chainProblemId);
-});
+  const [created, advances, finals, failed] = await Promise.all([
+    treasury.queryFilter(treasury.filters.EscrowCreated(chainId), DEPLOY_BLOCK),
+    treasury.queryFilter(treasury.filters.AdvanceReleased(chainId), DEPLOY_BLOCK),
+    treasury.queryFilter(treasury.filters.FinalReleased(chainId), DEPLOY_BLOCK),
+    treasury.queryFilter(treasury.filters.EscrowFailed(chainId), DEPLOY_BLOCK),
+  ]);
+
+  const rows = [
+    ...created.map((e) => ["Escrow created", e]),
+    ...advances.map((e) => ["Advance released", e]),
+    ...finals.map((e) => ["Final payment", e]),
+    ...failed.map((e) => ["Funds returned", e]),
+  ].map(([label, event]) =>
+    h(
+      "li",
+      null,
+      h("span", { class: "tx-label" }, label),
+      h("span", { class: "tx-amount" }, event.args.amount ? `${ethers.utils.formatEther(event.args.amount)} ETH` : ""),
+      h(
+        "a",
+        { href: txUrl(event.transactionHash), target: "_blank", rel: "noreferrer" },
+        shortHash(event.transactionHash)
+      )
+    )
+  );
+
+  fill(list, rows.length ? rows : h("li", { class: "muted" }, "No treasury activity yet"));
+}
