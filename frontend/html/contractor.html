@@ -1,56 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <title>Contractor Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contractor | Proof of Fix</title>
+  <link rel="stylesheet" href="../css/ui.css" />
   <link rel="stylesheet" href="../css/contractor.css" />
 </head>
 
 <body>
-  
-  <header id="topbar" class="topbar">
-    <h1>Contractor Dashboard</h1>
-    <div class="topbar-meta">
-      <span id="localityBadge">Locality</span>
-      <button id="logoutBtn">Logout</button>
+  <header class="app-header">
+    <div class="header-left">
+      <h1>Contractor Dashboard</h1>
+      <p><span id="localityBadge">Locality</span></p>
+    </div>
+    <div class="header-right">
+      <div id="wallet-card" class="wallet-card"></div>
+      <button id="homeBtn" class="btn btn-ghost">Resident view</button>
+      <button id="logoutBtn" class="btn btn-ghost">Log out</button>
     </div>
   </header>
-  
-  <section class="stats">
-    <div class="stat">
-      <p>Wallet Balance</p>
-      <h3 id="balance">0</h3>
-    </div>
-    <div class="stat">
-      <p>Total Issues</p>
-      <h3 id="statTotal">0</h3>
-    </div>
-    <div class="stat">
-      <p>In Progress</p>
-      <h3 id="statProgress">0</h3>
-    </div>
-    <div class="stat">
-      <p>Completed</p>
-      <h3 id="statCompleted">0</h3>
-    </div>
-  </section>
-  
-  <main class="content">
-    <h2>Assigned Problems</h2>
-    
-    <p style="color:#666; margin-bottom:12px;">
-      Mark problems as completed once work is done. Citizens will verify completion.
-    </p>
-    
-    <div id="problemsContainer"></div>
-  </main>
-  
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="../js/supabaseClient.js"></script>
-  <script type="module" src="../js/contractorMain.js"></script>
-</body>
 
+  <main class="main-container">
+    <section class="stats">
+      <div class="stat">
+        <p>Wallet balance</p>
+        <h3 id="balance">-</h3>
+      </div>
+      <div class="stat">
+        <p>Assigned jobs</p>
+        <h3 id="statTotal">0</h3>
+      </div>
+      <div class="stat">
+        <p>In progress</p>
+        <h3 id="statProgress">0</h3>
+      </div>
+      <div class="stat">
+        <p>Completed</p>
+        <h3 id="statCompleted">0</h3>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="section-head">
+        <h2>Your jobs</h2>
+        <p class="section-hint">Post updates as you work. Mark a job complete to start resident verification.</p>
+      </div>
+      <div id="problemsContainer"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="../js/supabaseClient.js"></script>
+  <script type="module" src="../js/pages/contractor.js"></script>
+</body>
 </html>

@@ -1,118 +1,211 @@
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
-import { getVotingContract } from "../blockchain.js";
+import {
+  ethers,
+  getVotingContract,
+  readProvider,
+  toChainId,
+  txUrl,
+  hasWallet,
+} from "../blockchain.js";
+import { client, requireProfile, bindLogout, go } from "../lib/session.js";
+import { h, fill, setText, show } from "../lib/dom.js";
+import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
+import { rupees, ethAmount } from "../lib/format.js";
+import { mountWalletCard } from "../lib/wallet.js";
+import { STATUS, STATUS_LABEL } from "../config.js";
 
-function toChainId(uuid) {
-  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(uuid));
-}
+let profile;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const supabase = window.supabaseClient;
+  const context = await requireProfile("id, full_name, locality, wallet, isContractor", "contractor");
+  if (!context) return;
+
+  profile = context.profile;
+
+  setText("#localityBadge", profile.locality || "No locality");
+  bindLogout("#logoutBtn");
+
+  mountWalletCard(
+    document.getElementById("wallet-card"),
+    { userId: profile.id, wallet: profile.wallet },
+    (address) => {
+      profile.wallet = address;
+      refreshBalance();
+      loadProblems();
+    }
+  );
+
+  document.getElementById("homeBtn")?.addEventListener("click", () => go("home"));
+
+  await refreshBalance();
+  await loadProblems();
+});
+
+async function refreshBalance() {
+  const target = document.getElementById("balance");
+
+  if (!profile.wallet) {
+    setText(target, "Not linked");
+    return;
+  }
+
+  if (!hasWallet()) {
+    setText(target, "-");
+    return;
+  }
+
+  try {
+    const balance = await readProvider().getBalance(profile.wallet);
+    setText(target, `${ethAmount(ethers.utils.formatEther(balance))} ETH`);
+  } catch (err) {
+    console.warn(err);
+    setText(target, "-");
+  }
+}
+
+async function loadProblems() {
   const container = document.getElementById("problemsContainer");
+  fill(container, skeleton(2));
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = "../html/login.html";
+  if (!profile.wallet) {
+    fill(
+      container,
+      emptyState("Link your wallet to see assigned work", "Jobs are matched to your wallet address.")
+    );
+    setText("#statTotal", "0");
+    setText("#statProgress", "0");
+    setText("#statCompleted", "0");
     return;
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("locality, isContractor, wallet")
-    .eq("id", session.user.id)
-    .single();
-
-  if (!profile || !profile.isContractor) {
-    window.location.href = "../html/home.html";
-    return;
-  }
-
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const bal = await provider.getBalance(profile.wallet);
-  document.getElementById("balance").innerText = `${ethers.utils.formatEther(bal)} ETH`;
-  document.getElementById("localityBadge").innerText = `Locality: ${profile.locality}`;
-
-  const { data: problems } = await supabase
+  const { data, error } = await client()
     .from("problems")
     .select("*")
-    .eq("locality", profile.locality)
-    .eq("assigned", true)
-    .in("status_code", [2, 3, 4, 5]);
+    .ilike("contractor_wallet", profile.wallet)
+    .order("status_code");
 
-  const totalIssues = problems?.length ?? 0;
-  const inProgress = problems?.filter(p => p.status_code === 2 || p.status_code === 3).length ?? 0;
-  const completed = problems?.filter(p => p.status_code === 4).length ?? 0;
-
-  document.getElementById("statTotal").innerText = totalIssues;
-  document.getElementById("statProgress").innerText = inProgress;
-  document.getElementById("statCompleted").innerText = completed;
-
-  if (!problems || problems.length === 0) {
-    container.innerHTML = "<p>No assigned problems.</p>";
+  if (error) {
+    fill(container, emptyState("Could not load your jobs", readableError(error)));
     return;
   }
 
-  container.innerHTML = "";
+  const inProgress = data.filter((p) =>
+    [STATUS.UNDER_PROGRESS, STATUS.COMPLETION_VOTING].includes(p.status_code)
+  );
+  const completed = data.filter((p) => p.status_code === STATUS.COMPLETED);
 
-  const ordered = [
-    ...problems.filter(p => p.status_code === 2),
-    ...problems.filter(p => p.status_code !== 2),
+  setText("#statTotal", String(data.length));
+  setText("#statProgress", String(inProgress.length));
+  setText("#statCompleted", String(completed.length));
+
+  if (!data.length) {
+    fill(container, emptyState("No jobs assigned yet", "Funded work in your locality will show up here."));
+    return;
+  }
+
+  fill(container, data.map(jobCard));
+}
+
+function jobCard(problem) {
+  const remark = h("textarea", {
+    class: "remark-input",
+    rows: "3",
+    maxlength: "400",
+    placeholder: "Add a work update residents can read...",
+  });
+  remark.value = problem.remark || "";
+
+  const actions = [
+    h(
+      "button",
+      { class: "btn btn-ghost", onClick: (event) => saveRemark(event, problem.id, remark.value) },
+      "Save update"
+    ),
   ];
 
-  ordered.forEach((p) => {
-    const card = document.createElement("div");
-    card.className = "problem-card";
-    card.innerHTML = `
-      <h3>${p.title}</h3>
-      <img src="${p.image_url || "https://via.placeholder.com/300x150"}" />
-      ${p.assigned ? `<p><strong>Advance Paid:</strong> ₹${p.advance_paid}</p>` : ""}
-      <p><strong>Status:</strong> ${p.status}</p>
-      <p><strong>Sector:</strong> ${p.locality}</p>
-      <textarea id="remark-${p.id}" placeholder="Add work update...">${p.remark || ""}</textarea>
-      <button class="save-btn" data-id="${p.id}">Save Remark</button>
-      ${p.status === "Under Progress"
-        ? `<button class="complete-btn" data-id="${p.id}">Mark Work Completed</button>`
-        : ""}
-    `;
-    container.appendChild(card);
-  });
+  if (problem.status_code === STATUS.UNDER_PROGRESS) {
+    actions.push(
+      h(
+        "button",
+        { class: "btn btn-primary", onClick: (event) => markComplete(event, problem) },
+        "Mark work completed"
+      )
+    );
+  }
 
-  container.addEventListener("click", async (e) => {
-    const saveBtn = e.target.closest(".save-btn");
-    const completeBtn = e.target.closest(".complete-btn");
+  if (problem.status_code === STATUS.COMPLETION_VOTING) {
+    actions.push(h("span", { class: "await-note" }, "Residents are verifying your work"));
+  }
 
-    if (saveBtn) {
-      const id = saveBtn.dataset.id;
-      const remark = document.getElementById(`remark-${id}`).value.trim();
-      if (!remark) return alert("Remark is empty");
-      await supabase.from("problems").update({ remark }).eq("id", id);
-      alert("Remark saved");
+  return h(
+    "article",
+    { class: "problem-card" },
+    h("h3", null, problem.title),
+    h(
+      "div",
+      { class: "card-meta" },
+      h("span", { class: `status-badge status-${problem.status_code}` }, STATUS_LABEL[problem.status_code]),
+      h("span", null, `Budget ${rupees(problem.cost)}`),
+      problem.advance_paid ? h("span", null, `Advance ${rupees(problem.advance_paid)}`) : null
+    ),
+    problem.description ? h("p", { class: "card-desc" }, problem.description) : null,
+    problem.escrow_tx
+      ? h(
+          "a",
+          { class: "tx-ref", href: txUrl(problem.escrow_tx), target: "_blank", rel: "noreferrer" },
+          "View escrow transaction"
+        )
+      : null,
+    remark,
+    h("div", { class: "card-actions" }, ...actions)
+  );
+}
+
+async function saveRemark(event, id, remark) {
+  const value = remark.trim();
+
+  if (!value) {
+    toast("Write an update first", "error");
+    return;
+  }
+
+  await withBusy(event.currentTarget, "Saving...", async () => {
+    const { error } = await client().from("problems").update({ remark: value }).eq("id", id);
+
+    if (error) {
+      toast(readableError(error), "error");
+      return;
     }
 
-    if (completeBtn) {
-      const id = completeBtn.dataset.id;
-      if (!confirm("Mark work as completed and start completion voting?")) return;
+    toast("Update saved", "success");
+  });
+}
 
-      const chainProblemId = toChainId(id);
-      const voting = await getVotingContract();
+async function markComplete(event, problem) {
+  if (!confirmAction("Mark this work as completed? Residents will vote to verify it.")) return;
 
-      try {
-        const tx = await voting.startCompletionVoting(chainProblemId);
-        await tx.wait();
-        await supabase
-          .from("problems")
-          .update({ status: "Completion Voting", status_code: 3 })
-          .eq("id", id);
-        alert("Completion voting started");
-        location.reload();
-      } catch (err) {
-        console.error(err);
-        alert("Transaction failed: " + (err.reason || err.message));
-      }
+  await withBusy(event.currentTarget, "Confirm in wallet...", async () => {
+    try {
+      const contract = await getVotingContract();
+      const tx = await contract.startCompletionVoting(toChainId(problem.id));
+
+      event.currentTarget.textContent = "Waiting for confirmation...";
+      await tx.wait();
+
+      const { error } = await client()
+        .from("problems")
+        .update({
+          status: STATUS_LABEL[STATUS.COMPLETION_VOTING],
+          status_code: STATUS.COMPLETION_VOTING,
+        })
+        .eq("id", problem.id);
+
+      if (error) console.error(error);
+
+      toast("Residents can now verify your work", "success");
+      await loadProblems();
+    } catch (err) {
+      console.error(err);
+      toast(readableError(err), "error");
     }
   });
-
-  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    window.location.href = "../html/index.html";
-  });
-});
+}
