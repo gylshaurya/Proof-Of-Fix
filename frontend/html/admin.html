@@ -2,45 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Panel</title>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
-  <link href="../css/admin.css" rel="stylesheet">
-  <style>
-    body {
-      font-family: Outfit, sans-serif;
-      background: #f5f7fb;
-      padding: 30px;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    
-    .problem {
-      background: #fff;
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-    }
-    button {
-      margin-right: 8px;
-      margin-top: 8px;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin | Proof of Fix</title>
+  <link rel="stylesheet" href="../css/ui.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
 </head>
 
 <body>
-  <h1>Admin Panel</h1>
-  
-  <button id="startAll">Start Initial Voting (All)</button>
-  <button id="closeAll">Close Initial Voting (All)</button>
-  <button id="resetAll">Reset System</button>
-  
-  <div id="problems"></div>
-  
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <header class="app-header">
+    <div class="header-left">
+      <h1>Government Panel</h1>
+      <p>Open voting, fund escrows and settle completed work</p>
+    </div>
+    <div class="header-right">
+      <span id="roundInfo" class="chip"></span>
+      <span id="quorumInfo" class="chip chip-muted"></span>
+      <button id="newRoundBtn" class="btn btn-ghost">New round</button>
+      <button id="logoutBtn" class="btn btn-ghost">Log out</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div id="walletNotice" class="notice notice-warn" hidden>
+      MetaMask is required. Connect the government wallet to manage problems on chain.
+    </div>
+
+    <div id="problemsContainer"></div>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script type="module" src="../js/supabaseClient.js"></script>
-  <script type="module" src="../js/admin.js"></script>
+  <script type="module" src="../js/pages/admin.js"></script>
 </body>
 </html>

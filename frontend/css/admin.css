@@ -1,192 +1,155 @@
-/* ============================
-   ADMIN PANEL – PROFESSIONAL UI
-   ============================ */
-
-:root {
-  --bg-main: #f4f6fb;
-  --bg-card: #ffffff;
-  --bg-header: #0f172a;
-  --accent: #2563eb;
-  --danger: #dc2626;
-  --warning: #d97706;
-  --success: #16a34a;
-
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --border: #e2e8f0;
-  --radius: 10px;
-  --shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
-}
-
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  font-family: "Outfit", sans-serif;
-  background: var(--bg-main);
-  color: var(--text-main);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  line-height: 1.55;
 }
 
-/* ============================
-   HEADER
-   ============================ */
-
-h1 {
-  background: var(--bg-header);
-  color: white;
-  padding: 20px 30px;
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 
-/* ============================
-   LAYOUT
-   ============================ */
-
-body > button,
-body > #problems {
-  margin: 20px 30px;
+.header-left h1 {
+  font-size: 20px;
+  font-weight: 700;
 }
 
-/* ============================
-   GLOBAL ACTION BAR
-   ============================ */
-
-body > button {
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  margin-right: 10px;
-  transition: all 0.2s ease;
+.header-left p {
+  font-size: 13px;
+  color: var(--ink-muted);
 }
 
-#startAll {
-  background: var(--accent);
-  color: white;
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-#closeAll {
-  background: var(--warning);
-  color: white;
+.main-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
 }
 
-#resetAll {
-  background: var(--danger);
-  color: white;
+.locality-group {
+  margin-bottom: 36px;
 }
 
-body > button:hover {
-  transform: translateY(-1px);
-  opacity: 0.95;
+.locality-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
 }
 
-/* ============================
-   PROBLEM GRID
-   ============================ */
+.locality-header h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-right: auto;
+}
 
-#problems {
+.problem-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
 }
 
-/* ============================
-   PROBLEM CARD
-   ============================ */
-
-.problem {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
+.problem-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-.problem h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+.problem-card h3 {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.4;
 }
 
-.problem p {
-  margin: 0;
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
-/* ============================
-   STATUS BADGES
-   ============================ */
-
-.problem p strong {
-  color: var(--text-main);
-}
-
-.problem[data-status="Initial Voting"] {
-  border-left: 4px solid var(--accent);
-}
-
-.problem[data-status="Under Progress"] {
-  border-left: 4px solid var(--warning);
-}
-
-.problem[data-status="Completion Voting"] {
-  border-left: 4px solid var(--success);
-}
-
-.problem[data-status="Completed"] {
-  border-left: 4px solid var(--success);
-  opacity: 0.85;
-}
-
-.problem[data-status="Failed"] {
-  border-left: 4px solid var(--danger);
-  opacity: 0.85;
-}
-
-/* ============================
-   CARD ACTION BUTTONS
-   ============================ */
-
-.problem button {
-  align-self: flex-start;
-  padding: 6px 12px;
+.card-desc {
   font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  background: var(--accent);
-  color: white;
-  transition: all 0.15s ease;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.problem button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+.card-contractor {
+  font-size: 13px;
+  color: var(--ink-soft);
 }
 
-/* ============================
-   RESPONSIVE
-   ============================ */
+.card-contractor code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--canvas);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
 
-@media (max-width: 600px) {
-  body > button {
-    margin-bottom: 10px;
-    width: 100%;
+.escrow-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.contractor-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.contractor-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-wash);
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 20px;
   }
 
-  #problems {
-    grid-template-columns: 1fr;
-  }
+  .main-container { padding: 20px 14px 48px; }
+  .problem-grid { grid-template-columns: 1fr; }
+  .locality-header h2 { margin-right: 0; width: 100%; }
 }

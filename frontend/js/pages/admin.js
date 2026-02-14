@@ -1,172 +1,384 @@
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
-import { getVotingContract, getTreasuryContract } from "../blockchain.js";
+import {
+  ethers,
+  getVotingContract,
+  getTreasuryContract,
+  readVotingContract,
+  toChainId,
+  inrToWei,
+  hasWallet,
+} from "../blockchain.js";
+import { client, requireProfile, bindLogout } from "../lib/session.js";
+import { h, fill, setText, show } from "../lib/dom.js";
+import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
+import { rupees, shortAddress, ethAmount } from "../lib/format.js";
+import { STATUS, STATUS_LABEL, PHASE } from "../config.js";
 
-function toChainId(uuid) {
-  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(uuid));
-}
+let voting;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const supabase = window.supabaseClient;
+  const context = await requireProfile("id, isAdmin", "admin");
+  if (!context) return;
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = "../html/login.html";
-    return;
+  bindLogout("#logoutBtn");
+
+  if (!hasWallet()) {
+    show(document.getElementById("walletNotice"), true);
+  } else {
+    voting = readVotingContract();
+    loadChainInfo();
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("isAdmin")
-    .eq("id", session.user.id)
-    .single();
-
-  if (!profile?.isAdmin) {
-    window.location.href = "../html/home.html";
-    return;
-  }
+  document.getElementById("newRoundBtn")?.addEventListener("click", startNewRound);
 
   await loadProblems();
-
-  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    window.location.href = "../html/index.html";
-  });
 });
 
-async function loadProblems() {
-  const supabase = window.supabaseClient;
-  const container = document.getElementById("problemsContainer");
-  container.innerHTML = "Loading...";
+async function loadChainInfo() {
+  try {
+    const [round, quorum] = await Promise.all([voting.currentRound(), voting.completionQuorum()]);
+    setText("#roundInfo", `Round ${round}`);
+    setText("#quorumInfo", `Quorum ${quorum}`);
+  } catch (err) {
+    console.warn(err);
+  }
+}
 
-  const { data: problems, error } = await supabase
-    .from("problems")
-    .select("*")
-    .order("status_code");
-
-  if (error || !problems) {
-    container.innerHTML = "Failed to load problems.";
+async function startNewRound(event) {
+  if (!confirmAction("Start a new round? Every resident gets a fresh 100 credits and all vote tallies reset.")) {
     return;
   }
 
-  container.innerHTML = "";
-
-  problems.forEach((p) => {
-    const card = document.createElement("div");
-    card.className = "problem-card";
-    card.innerHTML = `
-      <h3>${p.title}</h3>
-      <p><strong>Locality:</strong> ${p.locality}</p>
-      <p><strong>Status:</strong> ${p.status}</p>
-      <p><strong>Cost:</strong> ₹${p.cost}</p>
-      ${p.image_url ? `<img src="${p.image_url}" style="max-width:200px"/>` : ""}
-
-      ${p.status_code === 0 ? `
-        <button class="start-voting-btn" data-id="${p.id}">Start Voting</button>
-      ` : ""}
-
-      ${p.status_code === 1 ? `
-        <button class="close-voting-btn" data-id="${p.id}">Close Voting & Select Winner</button>
-      ` : ""}
-
-      ${p.status_code === 2 ? `
-        <input class="contractor-input" data-id="${p.id}" placeholder="Contractor wallet address" />
-        <button class="create-escrow-btn" data-id="${p.id}" data-cost="${p.cost}">
-          Create Escrow & Assign Contractor
-        </button>
-      ` : ""}
-
-      ${p.status_code === 3 ? `
-        <button class="close-completion-btn" data-id="${p.id}">Close Completion Voting</button>
-      ` : ""}
-    `;
-    container.appendChild(card);
-  });
-
-  container.addEventListener("click", async (e) => {
-    const supabase = window.supabaseClient;
-
-    if (e.target.closest(".start-voting-btn")) {
-      const id = e.target.closest(".start-voting-btn").dataset.id;
-      await supabase
-        .from("problems")
-        .update({ status: "Voting Open", status_code: 1 })
-        .eq("id", id);
-      alert("Voting started");
-      location.reload();
-    }
-
-    if (e.target.closest(".close-voting-btn")) {
-      const id = e.target.closest(".close-voting-btn").dataset.id;
-      const chainId = toChainId(id);
-      const voting = await getVotingContract();
-      const tx = await voting.moveToUnderProgress(chainId);
+  await withBusy(event.currentTarget, "Confirm in wallet...", async () => {
+    try {
+      const contract = await getVotingContract();
+      const tx = await contract.newRound();
       await tx.wait();
-      await supabase
+
+      await client()
         .from("problems")
-        .update({ status: "Under Progress", status_code: 2 })
-        .eq("id", id);
-      alert("Voting closed. Problem moved to Under Progress.");
-      location.reload();
+        .update({ status: STATUS_LABEL[STATUS.DRAFT], status_code: STATUS.DRAFT, vote_count: 0 })
+        .in("status_code", [STATUS.VOTING]);
+
+      toast("New round started", "success");
+      await loadChainInfo();
+      await loadProblems();
+    } catch (err) {
+      console.error(err);
+      toast(readableError(err), "error");
+    }
+  });
+}
+
+async function loadProblems() {
+  const container = document.getElementById("problemsContainer");
+  fill(container, skeleton(4));
+
+  const { data, error } = await client()
+    .from("problems")
+    .select("*")
+    .order("status_code")
+    .order("locality");
+
+  if (error) {
+    fill(container, emptyState("Could not load problems", readableError(error)));
+    return;
+  }
+
+  if (!data.length) {
+    fill(container, emptyState("No problems yet", "Reported issues will appear here for review."));
+    return;
+  }
+
+  const byLocality = new Map();
+  for (const problem of data) {
+    const key = problem.locality || "Unassigned";
+    if (!byLocality.has(key)) byLocality.set(key, []);
+    byLocality.get(key).push(problem);
+  }
+
+  fill(
+    container,
+    [...byLocality.entries()].map(([locality, problems]) =>
+      h(
+        "section",
+        { class: "locality-group" },
+        h(
+          "header",
+          { class: "locality-header" },
+          h("h2", null, locality),
+          drafts(problems).length
+            ? h(
+                "button",
+                {
+                  class: "btn btn-secondary",
+                  onClick: (event) => openVoting(event, locality, drafts(problems)),
+                },
+                `Open voting on ${drafts(problems).length} issue(s)`
+              )
+            : null,
+          inVoting(problems).length
+            ? h(
+                "button",
+                {
+                  class: "btn btn-primary",
+                  onClick: (event) => closeVoting(event, locality, inVoting(problems)),
+                },
+                "Close voting & pick winner"
+              )
+            : null
+        ),
+        h("div", { class: "problem-grid" }, problems.map(problemCard))
+      )
+    )
+  );
+}
+
+const drafts = (problems) => problems.filter((p) => p.status_code === STATUS.DRAFT);
+const inVoting = (problems) => problems.filter((p) => p.status_code === STATUS.VOTING);
+
+function problemCard(problem) {
+  const actions = [];
+
+  if (problem.status_code === STATUS.UNDER_PROGRESS && !problem.contractor_wallet) {
+    const input = h("input", {
+      class: "contractor-input",
+      type: "text",
+      placeholder: "0x contractor wallet",
+      spellcheck: "false",
+    });
+
+    actions.push(
+      h(
+        "div",
+        { class: "escrow-form" },
+        input,
+        h(
+          "button",
+          { class: "btn btn-primary", onClick: (event) => createEscrow(event, problem, input.value) },
+          "Fund escrow"
+        )
+      )
+    );
+  }
+
+  if (problem.status_code === STATUS.COMPLETION_VOTING) {
+    actions.push(
+      h(
+        "button",
+        { class: "btn btn-primary", onClick: (event) => settle(event, problem) },
+        "Close voting & settle"
+      )
+    );
+  }
+
+  return h(
+    "article",
+    { class: "problem-card" },
+    h("h3", null, problem.title),
+    h(
+      "div",
+      { class: "card-meta" },
+      h("span", { class: `status-badge status-${problem.status_code}` }, STATUS_LABEL[problem.status_code]),
+      h("span", null, rupees(problem.cost)),
+      problem.vote_count ? h("span", null, `${problem.vote_count} votes`) : null
+    ),
+    problem.description ? h("p", { class: "card-desc" }, problem.description) : null,
+    problem.contractor_wallet
+      ? h(
+          "p",
+          { class: "card-contractor" },
+          "Contractor: ",
+          h("code", null, shortAddress(problem.contractor_wallet))
+        )
+      : null,
+    ...actions
+  );
+}
+
+async function openVoting(event, locality, problems) {
+  await withBusy(event.currentTarget, "Opening...", async () => {
+    const { error } = await client()
+      .from("problems")
+      .update({ status: STATUS_LABEL[STATUS.VOTING], status_code: STATUS.VOTING })
+      .in("id", problems.map((p) => p.id));
+
+    if (error) {
+      toast(readableError(error), "error");
+      return;
     }
 
-    if (e.target.closest(".create-escrow-btn")) {
-      const btn = e.target.closest(".create-escrow-btn");
-      const id = btn.dataset.id;
-      const costINR = Number(btn.dataset.cost);
-      const contractorAddress = document.querySelector(
-        `.contractor-input[data-id="${id}"]`
-      ).value.trim();
+    toast(`Voting open in ${locality}`, "success");
+    await loadProblems();
+  });
+}
 
-      if (!ethers.utils.isAddress(contractorAddress)) {
-        return alert("Invalid contractor wallet address");
+async function closeVoting(event, locality, problems) {
+  if (!problems.length) return;
+
+  await withBusy(event.currentTarget, "Reading votes...", async () => {
+    try {
+      const tallies = await Promise.all(
+        problems.map(async (problem) => ({
+          problem,
+          votes: Number(await voting.getTotalVotes(toChainId(problem.id))),
+        }))
+      );
+
+      tallies.sort((a, b) => b.votes - a.votes);
+      const winner = tallies[0];
+
+      if (winner.votes === 0) {
+        toast(`No votes cast in ${locality} yet`, "error");
+        return;
       }
 
-      const ethAmount = (costINR / 200000).toFixed(6);
-      const value = ethers.utils.parseEther(ethAmount);
-      const chainId = toChainId(id);
+      if (!confirmAction(`"${winner.problem.title}" wins with ${winner.votes} votes. Move it to Under Progress?`)) {
+        return;
+      }
 
-      const treasury = await getTreasuryContract();
-      const tx = await treasury.createEscrow(chainId, contractorAddress, { value });
+      event.currentTarget.textContent = "Confirm in wallet...";
+
+      const contract = await getVotingContract();
+      const tx = await contract.moveToUnderProgress(toChainId(winner.problem.id));
+
+      event.currentTarget.textContent = "Waiting for confirmation...";
       await tx.wait();
 
-      await supabase
+      await client()
+        .from("problems")
+        .update({
+          status: STATUS_LABEL[STATUS.UNDER_PROGRESS],
+          status_code: STATUS.UNDER_PROGRESS,
+          vote_count: winner.votes,
+        })
+        .eq("id", winner.problem.id);
+
+      const losers = tallies.slice(1).map((t) => t.problem.id);
+      if (losers.length) {
+        await client()
+          .from("problems")
+          .update({ status: STATUS_LABEL[STATUS.DRAFT], status_code: STATUS.DRAFT })
+          .in("id", losers);
+      }
+
+      toast(`${winner.problem.title} selected for funding`, "success");
+      await loadProblems();
+    } catch (err) {
+      console.error(err);
+      toast(readableError(err), "error");
+    }
+  });
+}
+
+async function createEscrow(event, problem, contractorAddress) {
+  const address = contractorAddress.trim();
+
+  if (!ethers.utils.isAddress(address)) {
+    toast("Enter a valid wallet address", "error");
+    return;
+  }
+
+  let value;
+  try {
+    value = inrToWei(problem.cost);
+  } catch (err) {
+    toast("This problem has no valid cost set", "error");
+    return;
+  }
+
+  if (value.isZero()) {
+    toast("Cost is too small to fund on chain", "error");
+    return;
+  }
+
+  const eth = ethAmount(ethers.utils.formatEther(value));
+  if (!confirmAction(`Lock ${eth} ETH for ${rupees(problem.cost)}? Half is released immediately.`)) {
+    return;
+  }
+
+  await withBusy(event.currentTarget, "Assigning contractor...", async () => {
+    const button = event.currentTarget;
+
+    try {
+      const chainId = toChainId(problem.id);
+
+      const votingContract = await getVotingContract();
+      const assignTx = await votingContract.assignContractor(chainId, address);
+      await assignTx.wait();
+
+      button.textContent = "Funding escrow...";
+
+      const treasury = await getTreasuryContract();
+      const tx = await treasury.createEscrow(chainId, address, { value });
+      await tx.wait();
+
+      const { error } = await client()
         .from("problems")
         .update({
           assigned: true,
-          contractor_wallet: contractorAddress,
-          advance_paid: costINR / 2,
+          contractor_wallet: address,
+          escrow_wei: value.toString(),
+          advance_paid: problem.cost / 2,
+          escrow_tx: tx.hash,
         })
-        .eq("id", id);
+        .eq("id", problem.id);
 
-      alert(`Escrow created. Advance of ₹${costINR / 2} sent to contractor.`);
-      location.reload();
+      if (error) {
+        toast("Escrow funded but the database did not update, refresh and check", "error");
+        console.error(error);
+        return;
+      }
+
+      toast(`Escrow funded, advance sent to ${shortAddress(address)}`, "success");
+      await loadProblems();
+    } catch (err) {
+      console.error(err);
+      toast(readableError(err), "error");
     }
+  });
+}
 
-    if (e.target.closest(".close-completion-btn")) {
-      const id = e.target.closest(".close-completion-btn").dataset.id;
-      const chainId = toChainId(id);
-      const voting = await getVotingContract();
+async function settle(event, problem) {
+  await withBusy(event.currentTarget, "Closing voting...", async () => {
+    const button = event.currentTarget;
 
-      const closeTx = await voting.closeCompletionVoting(chainId);
+    try {
+      const chainId = toChainId(problem.id);
+      const votingContract = await getVotingContract();
+
+      const [yes, no] = await votingContract.getCompletionVotes(chainId);
+      if (!confirmAction(`Close verification with ${yes} yes and ${no} no votes?`)) return;
+
+      const closeTx = await votingContract.closeCompletionVoting(chainId);
       await closeTx.wait();
 
-      const phase = await voting.getPhase(chainId);
-      const passed = phase === 3;
+      const phase = Number(await votingContract.getPhase(chainId));
+      const approved = phase === PHASE.COMPLETED;
+
+      button.textContent = "Settling escrow...";
 
       const treasury = await getTreasuryContract();
       const finalizeTx = await treasury.finalize(chainId);
       await finalizeTx.wait();
 
-      await supabase
+      await client()
         .from("problems")
         .update({
-          status: passed ? "Completed" : "Failed",
-          status_code: passed ? 4 : 5,
+          status: approved ? STATUS_LABEL[STATUS.COMPLETED] : STATUS_LABEL[STATUS.FAILED],
+          status_code: approved ? STATUS.COMPLETED : STATUS.FAILED,
+          settle_tx: finalizeTx.hash,
         })
-        .eq("id", id);
+        .eq("id", problem.id);
 
-      alert(passed ? "Work approved. Final payment released." : "Work rejected. Funds retained.");
-      location.reload();
+      toast(
+        approved ? "Work approved, final payment released" : "Work rejected, funds returned to treasury",
+        approved ? "success" : "info"
+      );
+
+      await loadProblems();
+    } catch (err) {
+      console.error(err);
+      toast(readableError(err), "error");
     }
   });
 }
