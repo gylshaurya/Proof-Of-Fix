@@ -1,33 +1,26 @@
+import { currentSession, loadProfile, go, homeFor } from "../lib/session.js";
+
 document.addEventListener("DOMContentLoaded", async () => {
+  const cta = document.getElementById("primaryCta");
+
+  const session = await currentSession();
+  if (!session) return;
+
+  let profile = null;
   try {
-    const supabase = window.supabaseClient;
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      window.location.href = "../html/login.html";
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("isContractor, isAdmin")
-      .eq("id", session.user.id)
-      .single();
-
-    if (!profile) {
-      window.location.href = "../html/login.html";
-      return;
-    }
-
-    if (profile.isAdmin) {
-      window.location.href = "../html/admin.html";
-    } else if (profile.isContractor) {
-      window.location.href = "../html/contractor.html";
-    } else {
-      window.location.href = "../html/home.html";
-    }
+    profile = await loadProfile(session.user.id, "isAdmin, isContractor");
   } catch (err) {
-    console.error("Auth check failed:", err);
-    window.location.href = "../html/login.html";
+    console.error(err);
+    return;
+  }
+
+  if (!profile) return;
+
+  if (cta) {
+    cta.textContent = "Open dashboard";
+    cta.addEventListener("click", (event) => {
+      event.preventDefault();
+      go(homeFor(profile));
+    });
   }
 });

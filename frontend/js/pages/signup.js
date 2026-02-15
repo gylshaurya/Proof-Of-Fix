@@ -1,50 +1,64 @@
+import { client, go } from "../lib/session.js";
+
+const MIN_PASSWORD = 8;
+
 document.addEventListener("DOMContentLoaded", () => {
-  const supabase = window.supabaseClient;
   const form = document.getElementById("signup-form");
   const message = document.getElementById("message");
+  const submit = form.querySelector("button[type=submit]");
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  function setMessage(value, kind = "") {
+    message.textContent = value;
+    message.className = kind;
+  }
 
-    try {
-      const full_name = document.getElementById("name").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-      const locality = document.getElementById("locality").value;
-      const userType = document.querySelector('input[name="user_type"]:checked')?.value;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-      if (!full_name || !email || !password || !locality || !userType) {
-        throw new Error("All fields are required");
-      }
+    const full_name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const locality = document.getElementById("locality").value;
+    const userType = form.querySelector("input[name=user_type]:checked")?.value;
 
-      message.textContent = "Creating account...";
-      message.style.color = "inherit";
-
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-
-      const user = data.user;
-      if (!user) throw new Error("Signup failed");
-
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: user.id,
-        full_name,
-        locality,
-        credits: 100,
-        isContractor: userType === "contractor",
-      });
-      if (profileError) throw profileError;
-
-      message.textContent = "Signup successful!";
-      message.style.color = "green";
-
-      setTimeout(() => {
-        window.location.href = "../html/index.html";
-      }, 1000);
-    } catch (err) {
-      console.error(err);
-      message.textContent = err.message || "Signup failed";
-      message.style.color = "red";
+    if (!full_name || !email || !password || !locality || !userType) {
+      setMessage("All fields are required", "error");
+      return;
     }
+
+    if (password.length < MIN_PASSWORD) {
+      setMessage(`Password must be at least ${MIN_PASSWORD} characters`, "error");
+      return;
+    }
+
+    submit.disabled = true;
+    setMessage("Creating account...");
+
+    const { data, error } = await client().auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name,
+          locality,
+          is_contractor: userType === "contractor",
+        },
+      },
+    });
+
+    if (error) {
+      submit.disabled = false;
+      setMessage(error.message, "error");
+      return;
+    }
+
+    if (!data.session) {
+      setMessage("Check your inbox to confirm your email, then sign in.", "success");
+      submit.disabled = false;
+      return;
+    }
+
+    setMessage("Account created", "success");
+    setTimeout(() => go(userType === "contractor" ? "contractor" : "home"), 600);
   });
 });

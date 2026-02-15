@@ -1,24 +1,43 @@
+import { client, loadProfile, go, homeFor } from "../lib/session.js";
+
 document.addEventListener("DOMContentLoaded", () => {
-  const supabase = window.supabaseClient;
   const form = document.getElementById("login-form");
   const message = document.getElementById("message");
+  const submit = form.querySelector("button[type=submit]");
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    message.textContent = "Logging in...";
-    message.style.color = "inherit";
+  function setMessage(value, kind = "") {
+    message.textContent = value;
+    message.className = kind;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      message.textContent = error.message;
-      message.style.color = "red";
+    if (!email || !password) {
+      setMessage("Enter your email and password", "error");
       return;
     }
 
-    window.location.href = "../html/index.html";
+    submit.disabled = true;
+    setMessage("Signing in...");
+
+    const { data, error } = await client().auth.signInWithPassword({ email, password });
+
+    if (error) {
+      submit.disabled = false;
+      setMessage(error.message, "error");
+      return;
+    }
+
+    try {
+      const profile = await loadProfile(data.user.id, "isAdmin, isContractor");
+      go(homeFor(profile));
+    } catch (err) {
+      console.error(err);
+      go("home");
+    }
   });
 });
