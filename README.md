@@ -1,431 +1,246 @@
 # Proof Of Fix
 
-[Demo Video](https://vimeo.com/1158035342?fl=pl&fe=sh)
+Civic infrastructure repair, funded and verified on chain.
 
-## Decentralized Civic Accountability Through Blockchain Governance
+[Demo video](https://vimeo.com/1158035342?fl=pl&fe=sh)
 
-Proof Of Fix is a decentralized application that enables communities to identify, prioritize, fund, and verify local infrastructure problems using blockchain.
-
-The platform combines:
-
-- Public goods governance
-- Quadratic voting
-- Escrow based contractor payments
-- Citizen verification
-- Transparent on chain fund tracking
-
-The goal is to create a transparent and community driven civic accountability system.
+Residents report local problems, vote on which one matters most, and the winning issue gets
+funded through an escrow contract. The contractor is paid half up front. The rest is locked
+until the people who live there vote that the work was actually done.
 
 ---
 
-# Problem Statement
+## Why
 
-Public infrastructure systems often suffer from:
+Public works spending is hard to audit from the outside. You rarely know which problems were
+prioritised, who got paid, or whether the work happened. Proof Of Fix puts the three decisions
+that matter most on a public chain:
 
-- Lack of transparency
-- Corruption in contractor payments
-- No citizen participation
-- No verification of completed work
-- Misuse of public funds
+- which problem gets funded (quadratic vote)
+- when money moves (escrow contract)
+- whether the job was finished (completion vote)
 
-Citizens usually cannot verify:
-- Which problems are prioritized
-- Where funds are going
-- Whether contractors actually completed the work
+Everything else stays in Postgres, because putting descriptions and photos on chain is expensive
+and pointless.
 
 ---
 
-# Solution Overview
+## How it works
 
-Proof Of Fix creates a decentralized workflow:
-
-1. Citizens report problems
-2. Citizens vote on issues
-3. Highest priority problem is selected
-4. Funds are locked in escrow
-5. Contractor receives advance payment
-6. Citizens verify completion
-7. Remaining funds are released only after approval
-
-Blockchain acts as:
-- A governance layer
-- A public audit system
-- A decentralized escrow system
-
----
-
-# Core Blockchain Concepts Used
-
-## 1. Quadratic Voting
-
-Citizens vote using limited credits.
-
-Voting cost increases quadratically:
-
-```text
-cost = votes²
+```
+resident reports a problem
+        |
+        v
+government opens voting for the locality
+        |
+        v
+residents spend credits, quadratically
+        |
+        v
+highest voted problem wins, moves to Under Progress
+        |
+        v
+treasury escrows the budget, contractor gets 50%
+        |
+        v
+contractor marks the work done
+        |
+        v
+residents vote: is it fixed?
+        |
+   +----+----+
+   |         |
+approved   rejected
+   |         |
+   v         v
+remaining  remaining
+paid to    returned to
+contractor treasury
 ```
 
-Example:
+### Quadratic voting
 
-| Votes | Cost |
-|---|---|
+Every resident gets 100 credits per round. Votes on a single problem cost the square of the
+total, so the marginal vote keeps getting more expensive.
+
+| Votes on one problem | Credits spent |
+| --- | --- |
 | 1 | 1 |
 | 2 | 4 |
 | 3 | 9 |
 | 5 | 25 |
+| 10 | 100 |
 
-This prevents vote monopolization and spam voting.
+You can spread votes across several problems or concentrate them on one, but you cannot do both.
+Credits refill only when the government starts a new round, so spending everything is a real
+decision.
 
----
+### Escrow
 
-## 2. Escrow Smart Contracts
+`Treasury.createEscrow` takes the full budget and immediately forwards half to the contractor.
+The remainder stays locked until `finalize` reads the outcome from `Voting`:
 
-Funds are locked inside a Treasury contract.
+- **Completed** — remaining balance goes to the contractor
+- **Failed** — remaining balance goes back to the government wallet
 
-Workflow:
-- 50% advance released initially
-- Remaining funds locked
-- Final release happens only if citizens approve completion
-
-This removes blind trust from the system.
-
----
-
-## 3. On Chain Governance
-
-All critical actions are stored on blockchain:
-
-- Votes
-- Problem phase transitions
-- Completion approvals
-- Escrow releases
-- Contractor payments
-
-This makes the system transparent and verifiable.
+`finalize` can only run once per problem and refuses to run while voting is still open.
 
 ---
 
-# System Architecture
+## Contracts
 
-```text
-+----------------------+
-|      Frontend        |
-| Vanilla + Ethers.js  |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|    MetaMask Wallet   |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|     Voting.sol       |
-| Governance Contract  |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|    Treasury.sol      |
-| Escrow + Payments    |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|    Sepolia Network   |
-+----------------------+
+Both contracts are in `contracts/`, built and tested with Foundry.
 
-           ^
-           |
-+----------------------+
-|      Supabase        |
-| Auth + Database      |
-+----------------------+
-```
-
----
-
-# Workflow
-
-```text
-Citizen Reports Problem
-            |
-            v
-Citizens Vote Using Credits
-            |
-            v
-Highest Voted Problem Selected
-            |
-            v
-Treasury Creates Escrow
-            |
-            v
-Advance Payment Released
-            |
-            v
-Contractor Completes Work
-            |
-            v
-Completion Voting Starts
-            |
-      +-----+-----+
-      |           |
-      v           v
- Approved      Rejected
-      |           |
-      v           v
-Final Payment   Funds Retained
-Released
-```
-
----
-
-# Smart Contracts
-
-## Voting.sol
-
-Responsible for:
-- Quadratic voting
-- Problem lifecycle management
-- Completion voting
-- Vote tracking
-- Community verification
-
-### Problem Lifecycle
+**Voting.sol** holds the problem lifecycle, credit accounting and both votes.
 
 ```solidity
-enum Phase {
-    InitialVoting,
-    UnderProgress,
-    CompletionVoting,
-    Completed,
-    Failed
-}
+enum Phase { InitialVoting, UnderProgress, CompletionVoting, Completed, Failed }
 ```
 
-### Quadratic Voting Logic
+- phase transitions are `onlyOwner`, except `startCompletionVoting`, which the assigned
+  contractor may also call
+- completion voting has a 3 day window and a configurable quorum
+- a contractor cannot vote on their own work
+- credits are scoped to a round, so spending to zero does not top you back up
+- every state change emits an event, so the whole history is queryable
 
-```solidity
-uint256 cost = (newTotal * newTotal) - (currentVotes * currentVotes);
+**Treasury.sol** holds the money.
+
+- payouts use `call` rather than `transfer`, so contract wallets and multisigs work
+- `lockedBalance` tracks escrowed funds separately from anything else sent to the contract
+- `sweep` can only withdraw the unlocked remainder
+- reentrancy guard on every function that moves value
+
+```bash
+forge test
 ```
 
-### Double Voting Prevention
+```
+23 tests passed
+```
 
-```solidity
-require(userVotes[msg.sender][id] == 0, "already voted");
+### Deploying
+
+```bash
+cp .env.example .env      # fill in PRIVATE_KEY and GOVERNMENT_ADDRESS
+forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify
+```
+
+Copy the printed addresses and deploy block into `frontend/js/config.js`, then regenerate the
+frontend ABIs:
+
+```bash
+node -e '
+const fs=require("fs");
+for (const n of ["Voting","Treasury"]) {
+  const a=JSON.parse(fs.readFileSync(`out/${n}.sol/${n}.json`)).abi;
+  fs.writeFileSync(`frontend/js/abis/${n}ABI.js`, `const ${n}ABI = ${JSON.stringify(a,null,2)};\n\nexport default ${n}ABI;\n`);
+}'
 ```
 
 ---
 
-## Treasury.sol
+## Database
 
-Responsible for:
-- Escrow management
-- Advance contractor payments
-- Final payment release
-- Retaining funds if work fails
+Supabase handles auth and everything that does not need to be on chain. `supabase/schema.sql`
+is the whole setup — run it in the SQL editor of a fresh project.
 
-### Escrow Structure
+| Table | What it holds |
+| --- | --- |
+| `profiles` | name, locality, linked wallet, role flags |
+| `problems` | title, description, photo, cost, status, contractor, tx hashes |
 
-```solidity
-struct Escrow {
-    address contractor;
-    uint256 total;
-    uint256 released;
-    bool exists;
-}
+Row level security is on for both tables:
+
+- a profile row is created by a trigger on signup, so `isAdmin` can never be set by the client
+- role flags can only be changed by an admin
+- residents can insert problems only in Draft, only for themselves
+- contractors can edit the remark on their own jobs and move a job to Completion Voting
+- everything else is admin only, enforced by a trigger rather than trusting the client
+
+Photos go to the `problem-images` storage bucket, one folder per user.
+
+---
+
+## Wallet linking
+
+A Supabase account and a wallet are linked one to one. `profiles.wallet` is unique, so the same
+address cannot be attached to two accounts, and the app checks that the connected wallet matches
+the linked one before it will send a transaction.
+
+This is the honest limit of the current design: it stops one person casually voting from five
+browser profiles, but it is not identity. A determined attacker with five email addresses and
+five wallets still gets five votes. Real sybil resistance needs an off-chain check that this
+project does not have.
+
+---
+
+## Running it
+
+```bash
+# contracts
+forge install
+forge test
+
+# frontend, any static server works
+python3 -m http.server 8000
+open http://localhost:8000/frontend/html/index.html
 ```
 
-### Advance Release
+You need MetaMask on Sepolia and some test ETH. The app checks the network and offers to switch
+if you are on the wrong one.
 
-```solidity
-uint256 advance = msg.value / 2;
+The classifier is a separate batch job:
+
+```bash
+cd classifier
+pip install -r requirements.txt
+python classifier.py
 ```
 
-### Final Settlement
-
-Treasury checks the result from Voting.sol before releasing funds.
-
 ---
 
-# Frontend to Blockchain Connection
+## Layout
 
-The frontend uses Ethers.js for blockchain interaction.
-
-## Read Operations
-
-```js
-const totalVotes = await voting.getTotalVotes(problemId);
+```
+contracts/        Voting.sol, Treasury.sol
+test/             Foundry tests
+script/           deploy script
+supabase/         schema, RLS policies, triggers
+frontend/
+  html/           one page per role
+  css/            ui.css is shared, one file per page
+  js/
+    lib/          dom, ui, session, wallet, format helpers
+    pages/        one module per page
+    abis/         generated from forge output
+classifier/       YOLO based issue detection, writes to Supabase
 ```
 
-Used for:
-- Reading votes
-- Reading phases
-- Reading escrow data
+---
 
-These operations do not cost gas.
+## Stack
+
+Vanilla JS with ES modules, no build step. Ethers v5. Solidity 0.8.19 on Sepolia. Supabase for
+auth, Postgres and storage. Foundry for contracts. OpenCV and YOLOv8 for the classifier.
 
 ---
 
-## Write Operations
+## Known gaps
 
-```js
-const tx = await voting.vote(problemId, votes);
-await tx.wait();
-```
-
-Used for:
-- Casting votes
-- Starting completion voting
-- Creating escrows
-- Finalizing payments
-
-These require MetaMask signatures.
+- The classifier writes to `civic_issues`, but the app reads `problems`. The two halves are not
+  wired together yet, and the classifier stores local file paths rather than uploaded URLs.
+- Detection accuracy is unmeasured. The dataset filenames encode the true category, so scoring
+  it is the obvious next step.
+- Voting costs the resident gas. Meta-transactions would remove the biggest adoption blocker.
+- The government role is a single EOA. It should be a multisig.
 
 ---
 
-# Transaction Transparency
+## Next
 
-Every important blockchain transaction generates a transaction hash.
-
-Users can verify transactions directly on Etherscan:
-
-```js
-https://sepolia.etherscan.io/tx/${tx.hash}
-```
-
-Displayed transactions include:
-- Voting transactions
-- Escrow creation
-- Advance payment release
-- Final contractor payment
-
----
-
-# Database Design
-
-## Supabase Stores
-
-| Table | Purpose |
-|---|---|
-| profiles | User roles, locality, wallets |
-| problems | Problem metadata |
-
-## Blockchain Stores
-
-- Votes
-- Escrow states
-- Completion approvals
-- Fund releases
-- Problem phases
-
-This hybrid architecture reduces gas costs while keeping critical actions transparent.
-
----
-
-# Key Design Decisions
-
-## Why Quadratic Voting?
-
-- Prevents vote monopolies
-- Encourages fair participation
-- Captures strength of preference
-
----
-
-## Why Separate Voting and Treasury Contracts?
-
-Separation improves:
-- Security
-- Maintainability
-- Auditability
-
-Voting handles governance.
-
-Treasury handles funds.
-
----
-
-## Why Hybrid Storage?
-
-Descriptions and images are stored off chain because blockchain storage is expensive.
-
-Only trust critical actions are stored on chain.
-
----
-
-# Security Features
-
-## Access Control
-
-```solidity
-modifier onlyGov()
-```
-
-Restricts escrow actions to government/admin wallet.
-
----
-
-## Completion Vote Protection
-
-```solidity
-require(!completionVoted[id][msg.sender], "voted");
-```
-
-Prevents duplicate completion votes.
-
----
-
-## State Validation
-
-```solidity
-require(p.phase == Phase.UnderProgress, "bad");
-```
-
-Prevents invalid phase transitions.
-
----
-
-# Tech Stack
-
-## Frontend
-- HTML
-- CSS
-- JavaScript
-- Ethers.js
-
-## Backend
-- Supabase
-- PostgreSQL
-- Authentication
-
-## Blockchain
-- Solidity
-- Sepolia Testnet
-- MetaMask
-
----
-
-# Future Improvements
-
-- DAO governance
-- Multi contractor bidding
-- Reputation system
-- IPFS storage
-- Multi signature treasury
-- Automated fraud detection
-
----
-
-# Conclusion
-
-Proof Of Fix demonstrates how blockchain can be used for real world civic accountability through:
-
-- Community governance
-- Transparent public funding
-- Escrow based contractor payments
-- Citizen verification
-- On chain transparency
-
-The system combines governance and decentralized finance to create a fair and transparent public infrastructure workflow.
+- score the classifier against the labelled filenames and fix what the numbers show
+- connect the classifier output into `problems` with real image uploads
+- before/after photo comparison to support the completion vote
+- contractor stake, slashed when work is rejected
+- contractor bidding and a reputation score
