@@ -3,10 +3,10 @@
 .env
 .env.local
 
-out/
-cache/
-broadcast/
-lib/
+/out/
+/cache/
+/broadcast/
+/lib/
 
 __pycache__/
 *.pyc
