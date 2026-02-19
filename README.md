@@ -124,19 +124,11 @@ forge test
 ```bash
 cp .env.example .env      # fill in PRIVATE_KEY and GOVERNMENT_ADDRESS
 forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify
+node script/sync-frontend.js
 ```
 
-Copy the printed addresses and deploy block into `frontend/js/config.js`, then regenerate the
-frontend ABIs:
-
-```bash
-node -e '
-const fs=require("fs");
-for (const n of ["Voting","Treasury"]) {
-  const a=JSON.parse(fs.readFileSync(`out/${n}.sol/${n}.json`)).abi;
-  fs.writeFileSync(`frontend/js/abis/${n}ABI.js`, `const ${n}ABI = ${JSON.stringify(a,null,2)};\n\nexport default ${n}ABI;\n`);
-}'
-```
+`sync-frontend.js` reads the broadcast output, writes the new addresses and deploy block into
+`frontend/js/config.js`, and regenerates both ABIs from `out/`. Nothing to copy by hand.
 
 ---
 
