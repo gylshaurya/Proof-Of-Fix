@@ -182,6 +182,13 @@ open http://localhost:8000/frontend/html/index.html
 You need MetaMask on Sepolia and some test ETH. The app checks the network and offers to switch
 if you are on the wrong one.
 
+Deployed on Vercel as a static site. `vercel.json` maps `/` to the landing page and adds short
+paths for `/login`, `/signup`, `/app`, `/admin` and `/contractor`.
+
+```bash
+npx vercel --prod
+```
+
 The classifier is a separate batch job:
 
 ```bash
