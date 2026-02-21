@@ -7,10 +7,9 @@ import "../contracts/Treasury.sol";
 
 contract Deploy is Script {
     function run() external {
-        uint256 pk = vm.envUint("PRIVATE_KEY");
-        address government = vm.envAddress("GOVERNMENT_ADDRESS");
+        vm.startBroadcast();
 
-        vm.startBroadcast(pk);
+        address government = vm.envOr("GOVERNMENT_ADDRESS", msg.sender);
 
         Voting voting = new Voting();
         Treasury treasury = new Treasury(address(voting), government);
@@ -19,6 +18,7 @@ contract Deploy is Script {
 
         console.log("VOTING_ADDRESS", address(voting));
         console.log("TREASURY_ADDRESS", address(treasury));
+        console.log("GOVERNMENT", government);
         console.log("DEPLOY_BLOCK", block.number);
     }
 }

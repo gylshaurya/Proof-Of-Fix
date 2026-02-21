@@ -121,11 +121,24 @@ forge test
 
 ### Deploying
 
+Your private key is never written to disk in plaintext. Import it once into Foundry's encrypted
+keystore, then deploy by name:
+
 ```bash
-cp .env.example .env      # fill in PRIVATE_KEY and GOVERNMENT_ADDRESS
-forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify
+cast wallet import deployer --interactive     # paste key once, set a password
+cast wallet list                              # confirm it is there
+
+cp .env.example .env                          # RPC url and etherscan key only
+forge script script/Deploy.s.sol \
+  --rpc-url sepolia --broadcast --verify \
+  --account deployer --sender <your-address>
+
 node script/sync-frontend.js
 ```
+
+The keystore lives in `~/.foundry/keystores`, encrypted with scrypt + aes-128-ctr, and forge
+prompts for the password at deploy time. `GOVERNMENT_ADDRESS` in `.env` is optional and defaults
+to the deploying address. If you use a hardware wallet, swap `--account` for `--ledger`.
 
 `sync-frontend.js` reads the broadcast output, writes the new addresses and deploy block into
 `frontend/js/config.js`, and regenerates both ABIs from `out/`. Nothing to copy by hand.
