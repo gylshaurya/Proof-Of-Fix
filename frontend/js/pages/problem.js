@@ -14,8 +14,11 @@ import { h, fill, setText, show } from "../lib/dom.js";
 import { toast, readableError, withBusy, emptyState } from "../lib/ui.js";
 import { rupees, shortAddress, shortHash, timeLeft } from "../lib/format.js";
 import { STATUS, STATUS_LABEL, DEPLOY_BLOCK } from "../config.js";
+import { initTheme, bindThemeToggle } from "../lib/theme.js";
 
 const MAX_VOTES = 10;
+
+initTheme();
 
 let problem;
 let chainId;
@@ -27,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!context) return;
 
   bindLogout("#logoutBtn");
+  bindThemeToggle();
 
   const problemId = new URLSearchParams(window.location.search).get("problemId");
   if (!problemId) {
@@ -80,13 +84,12 @@ function renderDetails() {
 
   const status = document.getElementById("status");
   status.textContent = STATUS_LABEL[problem.status_code] ?? "Unknown";
-  status.className = `status-badge status-${problem.status_code}`;
+  status.className = `badge status-${problem.status_code}`;
 
   if (problem.image_url) {
-    const img = document.getElementById("problemImage");
-    img.src = problem.image_url;
-    img.alt = problem.title;
-    img.hidden = false;
+    const hero = document.querySelector(".detail-hero");
+    const img = h("img", { id: "problemImage", src: problem.image_url, alt: problem.title });
+    hero.prepend(img);
   }
 
   if (problem.contractor_wallet) {
@@ -133,8 +136,14 @@ async function refreshStats() {
   }
 
   if (problem.status_code === STATUS.COMPLETION_VOTING) {
-    setText("#yesCount", completion[0].toString());
-    setText("#noCount", completion[1].toString());
+    const yes = Number(completion[0]);
+    const no = Number(completion[1]);
+    setText("#yesCount", String(yes));
+    setText("#noCount", String(no));
+
+    const fill = document.getElementById("tallyFill");
+    if (fill) fill.style.transform = `scaleX(${yes + no === 0 ? 0 : yes / (yes + no)})`;
+
     show(document.getElementById("completionStats"), true);
   }
 

@@ -12,14 +12,18 @@ import { h, fill, setText, show } from "../lib/dom.js";
 import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
 import { rupees, shortAddress, ethAmount } from "../lib/format.js";
 import { STATUS, STATUS_LABEL, PHASE } from "../config.js";
+import { initTheme, bindThemeToggle } from "../lib/theme.js";
 
 let voting;
+
+initTheme();
 
 document.addEventListener("DOMContentLoaded", async () => {
   const context = await requireProfile("id, isAdmin", "admin");
   if (!context) return;
 
   bindLogout("#logoutBtn");
+  bindThemeToggle();
 
   if (!hasWallet()) {
     show(document.getElementById("walletNotice"), true);
@@ -71,7 +75,7 @@ async function startNewRound(event) {
 
 async function loadProblems() {
   const container = document.getElementById("problemsContainer");
-  fill(container, skeleton(4));
+  fill(container, skeleton(4, 190));
 
   const { data, error } = await client()
     .from("problems")
@@ -127,7 +131,7 @@ async function loadProblems() {
               )
             : null
         ),
-        h("div", { class: "problem-grid" }, problems.map(problemCard))
+        h("div", { class: "issue-grid" }, problems.map(problemCard))
       )
     )
   );
@@ -141,7 +145,7 @@ function problemCard(problem) {
 
   if (problem.status_code === STATUS.UNDER_PROGRESS && !problem.contractor_wallet) {
     const input = h("input", {
-      class: "contractor-input",
+      class: "field contractor-input",
       type: "text",
       placeholder: "0x contractor wallet",
       spellcheck: "false",
@@ -173,12 +177,12 @@ function problemCard(problem) {
 
   return h(
     "article",
-    { class: "problem-card" },
+    { class: "card card-pad admin-card" },
     h("h3", null, problem.title),
     h(
       "div",
       { class: "card-meta" },
-      h("span", { class: `status-badge status-${problem.status_code}` }, STATUS_LABEL[problem.status_code]),
+      h("span", { class: `badge status-${problem.status_code}` }, STATUS_LABEL[problem.status_code]),
       h("span", null, rupees(problem.cost)),
       problem.vote_count ? h("span", null, `${problem.vote_count} votes`) : null
     ),

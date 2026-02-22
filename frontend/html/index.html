@@ -3,143 +3,333 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proof of Fix - Blockchain-Powered Civic Accountability</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proof of Fix — public money that can't move without a public vote</title>
+  <meta name="description"
+    content="Residents report local infrastructure problems, vote on which one gets funded, and verify the repair. Half the budget is escrowed on chain and only moves when the neighbourhood says the work is done.">
   <link rel="stylesheet" href="../css/ui.css">
   <link rel="stylesheet" href="../css/landing.css">
 </head>
 
 <body>
-  <nav class="navbar">
-    <div class="nav-container">
-      <div class="nav-logo">Proof of Fix</div>
-      <div class="nav-buttons">
-        <a href="../html/login.html" class="nav-btn nav-btn-login">Login</a>
-        <a href="../html/signup.html" class="nav-btn nav-btn-signup">Sign Up</a>
+<!--
+  THESIS: Public works accountability shown as money that provably cannot move, not claimed as
+  "transparency". Refuses the category-default hero of headline + two buttons + abstract 3D blob.
+  OWN-WORLD: Deep charcoal ground, one cyan accent that doubles as the lifecycle's first state,
+  soft radial glows, hairline-bordered raised surfaces, Archivo with JetBrains Mono for anything
+  on-chain. Semantic colour IS the workflow: cyan voting, amber in progress, violet verifying,
+  green completed, red rejected.
+  STORY: A visitor sees a real escrow split in the first viewport, understands that the locked
+  half is hostage to a neighbourhood vote, and opens the app or the source.
+  FIRST VIEWPORT: Left column headline and dual CTA; right column a live escrow card showing
+  50% released / 50% locked with the completion vote tallying beneath it. Primary action sits
+  top-left of the fold and repeats in the sticky nav.
+  FORM: Canon (modern product landing), taken as the user's standing exit from the direction
+  roll, executed at full fidelity against the reference they pinned. Seed key 51c071bb.
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
+  <a href="#main" class="sr-only">Skip to content</a>
+
+  <header class="nav" id="nav">
+    <div class="shell nav-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#escrow">Escrow</a>
+        <a href="#voting">Voting</a>
+        <a href="#stack">Stack</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
+          </svg>
+        </button>
+        <a href="login.html" class="nav-signin">Sign in</a>
+        <a href="signup.html" class="btn btn-sm" id="primaryCta">Open the app</a>
       </div>
     </div>
-  </nav>
+  </header>
 
-  <section class="hero">
-    <div class="bg-blob blob-1"></div>
-    <div class="bg-blob blob-2"></div>
-    <div class="bg-blob blob-3"></div>
+  <main id="main">
+    <section class="hero">
+      <div class="glow glow-a" aria-hidden="true"></div>
+      <div class="glow glow-b" aria-hidden="true"></div>
 
-    <div class="hero-content">
-      <div class="hero-text">
-        <h1 class="hero-title">Revolutionizing Civic Accountability</h1>
-        <p class="hero-subtitle">
-          Combining blockchain transparency, AI-powered problem detection, and quadratic voting
-          to ensure every civic issue gets resolved—with complete accountability at every step.
-        </p>
+      <div class="shell hero-grid">
+        <div class="hero-copy">
+          <h1 class="rise rise-1">
+            Public money that can't move without a <span class="grad">public vote</span>.
+          </h1>
+          <p class="hero-sub rise rise-2">
+            Residents report the potholes, the flooding and the broken lights. They vote on which one
+            gets fixed first. Half the budget reaches the contractor immediately — the rest is locked
+            in a smart contract until the neighbourhood confirms the work is actually done.
+          </p>
+          <div class="hero-cta rise rise-3">
+            <a href="signup.html" class="btn btn-lg">Open the app</a>
+            <a href="https://github.com/gylshaurya/Proof-Of-Fix" class="btn btn-lg btn-ghost" target="_blank"
+              rel="noreferrer">
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+              </svg>
+              View source
+            </a>
+          </div>
+          <p class="hero-note rise rise-4">Free testnet deployment. No real funds, no signup barrier.</p>
+        </div>
+
+        <div class="hero-visual rise rise-4" role="img"
+          aria-label="An escrow of 240,000 rupees for a Sector 2 drain repair: 120,000 released as advance, 120,000 locked pending a resident vote currently at 14 approve and 2 reject.">
+          <article class="escrow-card">
+            <header class="escrow-head">
+              <div>
+                <p class="escrow-eyebrow">Escrow · Sector 2</p>
+                <p class="escrow-title">Drain collapse near Ward 4 market</p>
+              </div>
+              <span class="badge status-3">Verifying</span>
+            </header>
+
+            <div class="escrow-total">
+              <span class="escrow-amount">₹2,40,000</span>
+              <span class="escrow-unit">1.20 ETH held by Treasury.sol</span>
+            </div>
+
+            <div class="split">
+              <div class="split-bar" aria-hidden="true">
+                <span class="split-released"></span>
+                <span class="split-locked"></span>
+              </div>
+              <div class="split-legend">
+                <span><i class="dot dot-ok" aria-hidden="true"></i>₹1,20,000 released</span>
+                <span><i class="dot dot-lock" aria-hidden="true"></i>₹1,20,000 locked</span>
+              </div>
+            </div>
+
+            <div class="escrow-vote">
+              <div class="spread">
+                <span class="escrow-vote-title">Completion vote</span>
+                <span class="escrow-timer">2d 4h left</span>
+              </div>
+              <div class="tally">
+                <div class="tally-bar" aria-hidden="true"><span style="width:87.5%"></span></div>
+                <div class="tally-legend">
+                  <span class="tally-yes">14 approve</span>
+                  <span class="tally-no">2 reject</span>
+                </div>
+              </div>
+              <p class="escrow-lock">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
+                  aria-hidden="true">
+                  <rect x="4" y="10.5" width="16" height="10" rx="2.2" />
+                  <path d="M8 10.5V7.4a4 4 0 0 1 8 0v3.1" />
+                </svg>
+                The locked half cannot be released by anyone until this vote closes.
+              </p>
+            </div>
+          </article>
+          <p class="demo-tag">Illustrative example — not a real municipal record</p>
+        </div>
+      </div>
+
+      <div class="shell">
+        <ul class="facts reveal">
+          <li><strong>50 / 50</strong><span>Advance released, remainder escrowed</span></li>
+          <li><strong>N²</strong><span>Credits to cast N votes on one problem</span></li>
+          <li><strong>3 days</strong><span>Window for residents to verify the work</span></li>
+          <li><strong>23</strong><span>Passing contract tests</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="band" id="how">
+      <div class="shell">
+        <header class="band-head reveal">
+          <p class="eyebrow">The loop</p>
+          <h2>Report, prioritise, fund, verify.</h2>
+          <p class="band-sub">Four moves. Three of them are transactions anyone can audit on Etherscan.</p>
+        </header>
+
+        <ol class="steps">
+          <li class="card card-pad step reveal">
+            <span class="step-num">01</span>
+            <h3>A resident reports it</h3>
+            <p>Photo, description and an estimated cost, filed against their sector. It sits as a draft until
+              the ward opens a voting round.</p>
+            <span class="badge status-0">Draft</span>
+          </li>
+          <li class="card card-pad step reveal">
+            <span class="step-num">02</span>
+            <h3>The neighbourhood prioritises</h3>
+            <p>Everyone gets 100 credits per round. Votes cost the square of your total, so nobody can
+              quietly buy the outcome with volume.</p>
+            <span class="badge status-1">Voting</span>
+          </li>
+          <li class="card card-pad step reveal">
+            <span class="step-num">03</span>
+            <h3>The budget goes into escrow</h3>
+            <p>The winning problem is funded. The contractor receives half immediately; the Treasury
+              contract holds the rest.</p>
+            <span class="badge status-2">In progress</span>
+          </li>
+          <li class="card card-pad step reveal">
+            <span class="step-num">04</span>
+            <h3>Residents settle it</h3>
+            <p>The contractor marks the job done and a 3-day vote opens. Approve and they're paid.
+              Reject and the money returns to the treasury.</p>
+            <span class="badge status-4">Completed</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="band band-alt" id="escrow">
+      <div class="shell split-band">
+        <div class="reveal">
+          <p class="eyebrow">Why it's different</p>
+          <h2>Most civic apps ask you to trust a dashboard.</h2>
+          <p class="band-sub">
+            A dashboard is a claim. It shows you a number somebody typed. The interesting question is
+            whether the money could have moved without you — and on a database, it always could.
+          </p>
+          <p class="band-sub">
+            Here the second half of every budget lives in <code>Treasury.sol</code> with no function that
+            releases it early. Not for the contractor, not for the ward officer, not for whoever deployed
+            the contract. <code>finalize()</code> reads the vote result and refuses to run while the vote
+            is still open.
+          </p>
+          <a href="https://github.com/gylshaurya/Proof-Of-Fix/blob/main/contracts/Treasury.sol" class="text-link"
+            target="_blank" rel="noreferrer">Read Treasury.sol →</a>
+        </div>
+
+        <figure class="code-figure reveal">
+          <figcaption>contracts/Treasury.sol</figcaption>
+          <pre><code><span class="c-key">function</span> <span class="c-fn">finalize</span>(<span class="c-type">bytes32</span> id) <span class="c-key">external</span> onlyGov nonReentrant {
+    Escrow <span class="c-key">storage</span> e = escrows[id];
+    <span class="c-fn">require</span>(e.exists, <span class="c-str">"no escrow"</span>);
+    <span class="c-fn">require</span>(!e.settled, <span class="c-str">"already settled"</span>);
+
+    IVoting.Phase phase = voting.<span class="c-fn">getPhase</span>(id);
+    <span class="c-fn">require</span>(
+        phase == IVoting.Phase.Completed ||
+        phase == IVoting.Phase.Failed,
+        <span class="c-str">"not resolved"</span>
+    );</code></pre>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="voting">
+      <div class="shell split-band split-band-flip">
+        <div class="card card-pad quad-card reveal">
+          <p class="eyebrow">Cost of voting on one problem</p>
+          <table class="quad-table">
+            <thead>
+              <tr><th scope="col">Votes</th><th scope="col">Credits</th><th><span class="sr-only">Share of budget</span></th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>1</td><td><span class="quad-bar" style="--w:1%"></span></td></tr>
+              <tr><td>2</td><td>4</td><td><span class="quad-bar" style="--w:4%"></span></td></tr>
+              <tr><td>3</td><td>9</td><td><span class="quad-bar" style="--w:9%"></span></td></tr>
+              <tr><td>5</td><td>25</td><td><span class="quad-bar" style="--w:25%"></span></td></tr>
+              <tr><td>8</td><td>64</td><td><span class="quad-bar" style="--w:64%"></span></td></tr>
+              <tr class="quad-max"><td>10</td><td>100</td><td><span class="quad-bar" style="--w:100%"></span></td></tr>
+            </tbody>
+          </table>
+          <p class="hint">100 credits per resident per round. Ten votes on one problem spends everything.</p>
+        </div>
+
+        <div class="reveal">
+          <p class="eyebrow">Quadratic voting</p>
+          <h2>Intensity without capture.</h2>
+          <p class="band-sub">
+            One-person-one-vote can't tell a mild preference from an urgent one. Unlimited voting just
+            hands the outcome to whoever shows up most.
+          </p>
+          <p class="band-sub">
+            Squaring the cost lets someone whose street floods every monsoon spend hard on that one
+            problem — while making it prohibitively expensive to dominate every problem at once. The
+            price is shown before you commit, and credits only refill when the ward opens a new round.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-alt">
+      <div class="shell">
+        <header class="band-head reveal">
+          <p class="eyebrow">Three seats</p>
+          <h2>Everyone sees the same ledger.</h2>
+        </header>
+        <div class="roles">
+          <article class="card card-pad role reveal">
+            <h3>Resident</h3>
+            <p>Report problems, spend credits to prioritise, and cast the vote that unlocks or returns the
+              remaining budget.</p>
+          </article>
+          <article class="card card-pad role reveal">
+            <h3>Contractor</h3>
+            <p>See the jobs funded to your wallet, post progress updates, and open the verification vote
+              when the work is finished.</p>
+          </article>
+          <article class="card card-pad role reveal">
+            <h3>Ward office</h3>
+            <p>Open voting rounds, fund the winning problem into escrow, and settle it once residents have
+              returned a verdict.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="stack">
+      <div class="shell">
+        <header class="band-head reveal">
+          <p class="eyebrow">Built with</p>
+          <h2>No build step, no backend, no trust me.</h2>
+          <p class="band-sub">Static frontend talking straight to Postgres and to Sepolia. The whole thing
+            is readable in an afternoon.</p>
+        </header>
+        <ul class="stack-grid reveal">
+          <li><strong>Solidity 0.8.19</strong><span>Voting and Treasury, tested with Foundry</span></li>
+          <li><strong>Ethers v5</strong><span>Wallet, transactions and event history</span></li>
+          <li><strong>Postgres</strong><span>Descriptions and photos, with row-level security</span></li>
+          <li><strong>Vanilla ES modules</strong><span>No framework, no bundler, no lock-in</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="closer">
+      <div class="glow glow-c" aria-hidden="true"></div>
+      <div class="shell closer-inner reveal">
+        <h2>See the escrow work.</h2>
+        <p>Sign up as a resident, report something broken, and watch the money refuse to move until the
+          vote lands.</p>
         <div class="hero-cta">
-          <a href="signup.html" id="primaryCta" class="cta-btn cta-primary">Get started</a>
-          <a href="#impact" class="cta-btn cta-secondary">See how it works</a>
+          <a href="signup.html" class="btn btn-lg">Open the app</a>
+          <a href="https://github.com/gylshaurya/Proof-Of-Fix" class="btn btn-lg btn-ghost" target="_blank"
+            rel="noreferrer">View source</a>
         </div>
       </div>
+    </section>
+  </main>
 
-      <div class="tech-stack">
-        <div class="tech-card">
-          <div class="tech-icon">🔗</div>
-          <h3>Blockchain</h3>
-          <p>Smart contracts ensure transparent fund allocation and immutable tracking</p>
-        </div>
-        <div class="tech-card">
-          <div class="tech-icon">🤖</div>
-          <h3>AI Detection</h3>
-          <p>Computer vision identifies and verifies civic problems automatically</p>
-        </div>
-        <div class="tech-card">
-          <div class="tech-icon">🗳️</div>
-          <h3>Quadratic Voting</h3>
-          <p>Democratic, weighted voting prevents manipulation and ensures fairness</p>
-        </div>
-        <div class="tech-card">
-          <div class="tech-icon">✅</div>
-          <h3>Verification</h3>
-          <p>Residents vote to confirm the work before the final payment is unlocked</p>
-        </div>
-      </div>
+  <footer class="foot">
+    <div class="shell spread">
+      <span class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </span>
+      <p class="muted">Sepolia testnet · Demo data throughout · Built by Shaurya</p>
     </div>
-  </section>
+  </footer>
 
-  <section id="impact" class="impact-section">
-    <h2 class="section-title">Real Impact, Real Change</h2>
-    <div class="impact-grid">
-      <div class="impact-card">
-        <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=2070" alt="Pothole repair"
-          class="impact-image">
-        <div class="impact-content">
-          <h3>Infrastructure Problems</h3>
-          <p>Computer vision flags potholes and damaged roads from street photos. Residents vote on priorities, funds
-            are escrowed by smart contract, and neighbours verify the repair.</p>
-          <span class="impact-badge">AI-Verified</span>
-        </div>
-      </div>
-
-      <div class="impact-card">
-        <img src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=2070" alt="Waste management"
-          class="impact-image">
-        <div class="impact-content">
-          <h3>Waste Management</h3>
-          <p>Track garbage accumulation, fund cleanup initiatives, and verify results—all on an immutable blockchain
-            ensuring accountability from start to finish.</p>
-          <span class="impact-badge">Blockchain-Tracked</span>
-        </div>
-      </div>
-
-      <div class="impact-card">
-        <img src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070" alt="Water supply"
-          class="impact-image">
-        <div class="impact-content">
-          <h3>Water Infrastructure</h3>
-          <p>Monitor water supply issues, allocate repair funds transparently, and ensure every rupee reaches the right
-            hands with complete visibility.</p>
-          <span class="impact-badge">Full Transparency</span>
-        </div>
-      </div>
-
-      <div class="impact-card">
-        <img src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?q=80&w=2069" alt="Community"
-          class="impact-image">
-        <div class="impact-content">
-          <h3>Community Empowerment</h3>
-          <p>Decentralized voting gives every voice equal weight. Quadratic mechanisms prevent vote manipulation while
-            ensuring democratic decision-making.</p>
-          <span class="impact-badge">Quadratic Voting</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="process-section">
-    <h2 class="section-title">How It Works</h2>
-    <div class="process-flow">
-      <div class="process-step">
-        <div class="step-number">1</div>
-        <h4>AI Detection</h4>
-        <p>Computer vision scans images to identify civic problems across neighborhoods</p>
-      </div>
-      <div class="process-step">
-        <div class="step-number">2</div>
-        <h4>Community Voting</h4>
-        <p>Residents vote on priorities using quadratic voting for democratic allocation</p>
-      </div>
-      <div class="process-step">
-        <div class="step-number">3</div>
-        <h4>Smart Contracts</h4>
-        <p>Half the budget is escrowed on chain, the rest is locked until residents approve</p>
-      </div>
-      <div class="process-step">
-        <div class="step-number">4</div>
-        <h4>Resident Verification</h4>
-        <p>Neighbours vote on whether the job was actually done, on chain and in public</p>
-      </div>
-    </div>
-  </section>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script type="module" src="../js/supabaseClient.js"></script>
-  <script type="module" src="../js/pages/index.js"></script>
+  <script type="module" src="../js/pages/landing.js"></script>
 </body>
 
 </html>

@@ -1,57 +1,77 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Contractor | Proof of Fix</title>
+  <title>Your jobs — Proof of Fix</title>
   <link rel="stylesheet" href="../css/ui.css" />
-  <link rel="stylesheet" href="../css/contractor.css" />
+  <link rel="stylesheet" href="../css/app.css" />
 </head>
 
 <body>
-  <header class="app-header">
-    <div class="header-left">
-      <h1>Contractor Dashboard</h1>
-      <p><span id="localityBadge">Locality</span></p>
-    </div>
-    <div class="header-right">
-      <div id="wallet-card" class="wallet-card"></div>
-      <button id="homeBtn" class="btn btn-ghost">Resident view</button>
-      <button id="logoutBtn" class="btn btn-ghost">Log out</button>
+  <header class="app-bar">
+    <div class="shell app-bar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+      <nav class="app-nav" aria-label="Main">
+        <a href="home.html" id="homeBtn">Issues</a>
+        <a href="contractor.html" aria-current="page">Contractor</a>
+      </nav>
+      <div class="app-actions">
+        <div id="wallet-card" class="wallet-card"></div>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
+          </svg>
+        </button>
+        <button id="logoutBtn" class="btn btn-sm btn-ghost">Sign out</button>
+      </div>
     </div>
   </header>
 
-  <main class="main-container">
-    <section class="stats">
-      <div class="stat">
-        <p>Wallet balance</p>
-        <h3 id="balance">-</h3>
+  <main class="shell page">
+    <div class="page-head">
+      <div>
+        <h1>Your jobs</h1>
+        <p>Work funded to your wallet in <span id="localityBadge">your sector</span>.</p>
       </div>
-      <div class="stat">
-        <p>Assigned jobs</p>
-        <h3 id="statTotal">0</h3>
+    </div>
+
+    <section class="metrics">
+      <div class="metric metric-accent">
+        <span class="metric-label">Wallet balance</span>
+        <span class="metric-value" id="balance">—</span>
       </div>
-      <div class="stat">
-        <p>In progress</p>
-        <h3 id="statProgress">0</h3>
+      <div class="metric">
+        <span class="metric-label">Assigned</span>
+        <span class="metric-value" id="statTotal">0</span>
       </div>
-      <div class="stat">
-        <p>Completed</p>
-        <h3 id="statCompleted">0</h3>
+      <div class="metric">
+        <span class="metric-label">In progress</span>
+        <span class="metric-value" id="statProgress">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Completed</span>
+        <span class="metric-value" id="statCompleted">0</span>
       </div>
     </section>
 
-    <section class="content">
-      <div class="section-head">
-        <h2>Your jobs</h2>
-        <p class="section-hint">Post updates as you work. Mark a job complete to start resident verification.</p>
-      </div>
-      <div id="problemsContainer"></div>
-    </section>
+    <div class="section-head">
+      <h2>Assigned work</h2>
+      <p class="hint">Post updates as you go. Mark a job done to open resident verification.</p>
+    </div>
+
+    <div id="problemsContainer" class="job-list"></div>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script type="module" src="../js/supabaseClient.js"></script>
   <script type="module" src="../js/pages/contractor.js"></script>
 </body>
+
 </html>

@@ -1,111 +1,157 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Issue details | Proof of Fix</title>
+  <title>Issue — Proof of Fix</title>
   <link rel="stylesheet" href="../css/ui.css" />
-  <link rel="stylesheet" href="../css/problem.css" />
+  <link rel="stylesheet" href="../css/app.css" />
 </head>
 
 <body>
-  <header class="page-bar">
-    <a href="home.html" class="back-link">Back to dashboard</a>
-    <button id="logoutBtn" class="btn btn-ghost">Log out</button>
+  <header class="app-bar">
+    <div class="shell app-bar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+      <nav class="app-nav" aria-label="Main">
+        <a href="home.html">Issues</a>
+      </nav>
+      <div class="app-actions">
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
+          </svg>
+        </button>
+        <button id="logoutBtn" class="btn btn-sm btn-ghost">Sign out</button>
+      </div>
+    </div>
   </header>
 
-  <div class="problem-container">
+  <main class="shell page">
+    <a class="back-link" href="home.html">← All issues</a>
+
     <div id="walletNotice" class="notice notice-warn" hidden>
-      MetaMask is required to vote and to read on-chain data for this issue.
+      MetaMask is required to vote and to read this issue's on-chain history.
     </div>
 
-    <img id="problemImage" hidden alt="" />
+    <div class="detail">
+      <div class="detail-main">
+        <article class="detail-hero">
+          <div class="detail-hero-body">
+            <div class="row">
+              <span id="status" class="badge"></span>
+              <span class="chip" id="locality"></span>
+            </div>
+            <h1 id="problemTitle"></h1>
+            <p id="description"></p>
+          </div>
+        </article>
 
-    <h1 id="problemTitle"></h1>
+        <section id="remarkRow" class="remark-block" hidden>
+          <h2 class="panel-title">Latest update from the contractor</h2>
+          <p id="contractorRemark"></p>
+        </section>
 
-    <div class="meta">
-      <span id="status" class="status-badge"></span>
-      <span id="locality"></span>
+        <section id="votingSection" class="panel" hidden>
+          <div>
+            <h2 class="panel-title">Cast your vote</h2>
+            <p class="panel-hint">Votes cost the square of your running total. Three votes here costs nine credits.</p>
+          </div>
+          <div class="vote-input-row">
+            <input class="field" type="number" id="voteInput" min="1" step="1" placeholder="Votes" />
+            <button id="voteBtn" class="btn">Submit vote</button>
+          </div>
+          <p id="voteCostPreview" class="cost-preview"></p>
+        </section>
+
+        <section id="completionVoting" class="panel" hidden>
+          <div>
+            <h2 class="panel-title">Was it actually fixed?</h2>
+            <p class="panel-hint">Your verdict decides whether the locked half is released to the contractor or
+              returned to the treasury.</p>
+          </div>
+          <div class="verdict-row">
+            <button id="yesBtn" class="btn">Yes, it's fixed</button>
+            <button id="noBtn" class="btn btn-danger">No, still broken</button>
+          </div>
+          <p id="completionCountdown" class="countdown" hidden></p>
+        </section>
+
+        <p id="alreadyCompletionVotedMsg" class="notice notice-info" hidden></p>
+
+        <section id="completionStats" class="panel tally-panel" hidden>
+          <h2 class="panel-title">Verification tally</h2>
+          <div class="tally-track" aria-hidden="true"><span id="tallyFill"></span></div>
+          <div class="tally-counts">
+            <span class="tally-yes"><span id="yesCount">0</span> approve</span>
+            <span class="tally-no"><span id="noCount">0</span> reject</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">Vote history</h2>
+          <ul id="voteHistory" class="tx-list"></ul>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">Treasury activity</h2>
+          <ul id="escrowTxList" class="tx-list"></ul>
+        </section>
+      </div>
+
+      <aside class="detail-side">
+        <div id="txInfo" class="notice notice-info" hidden>
+          Transaction submitted — <a id="txLink" target="_blank" rel="noreferrer"></a>
+        </div>
+
+        <section class="panel">
+          <h2 class="panel-title">Funding</h2>
+          <dl class="stat-rows">
+            <div class="stat-row">
+              <dt>Estimated cost</dt>
+              <dd id="cost">—</dd>
+            </div>
+            <div class="stat-row" id="contractorRow" hidden>
+              <dt>Contractor</dt>
+              <dd class="addr" id="contractorWallet">—</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">Voting</h2>
+          <dl class="stat-rows">
+            <div class="stat-row">
+              <dt>Total votes</dt>
+              <dd id="chainTotalVotes">0</dd>
+            </div>
+            <div class="stat-row">
+              <dt>Your votes here</dt>
+              <dd id="myVotes">0</dd>
+            </div>
+            <div class="stat-row">
+              <dt>Credits left</dt>
+              <dd id="myCredits">0</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">On-chain ID</h2>
+          <code id="chainProblemId" class="chain-id"></code>
+        </section>
+      </aside>
     </div>
-
-    <p id="description"></p>
-
-    <section class="details">
-      <div class="detail-row">
-        <span class="detail-label">Estimated cost</span>
-        <span id="cost" class="detail-value"></span>
-      </div>
-      <div class="detail-row" id="contractorRow" hidden>
-        <span class="detail-label">Contractor</span>
-        <code id="contractorWallet" class="detail-value"></code>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Total votes</span>
-        <span id="chainTotalVotes" class="detail-value">0</span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Your votes here</span>
-        <span id="myVotes" class="detail-value">0</span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Credits left</span>
-        <span id="myCredits" class="detail-value">0</span>
-      </div>
-      <div class="detail-row detail-stack">
-        <span class="detail-label">On-chain ID</span>
-        <code id="chainProblemId" class="chain-id"></code>
-      </div>
-    </section>
-
-    <section id="remarkRow" class="remark-block" hidden>
-      <h3>Latest update from the contractor</h3>
-      <p id="contractorRemark"></p>
-    </section>
-
-    <div id="txInfo" class="notice notice-info" hidden>
-      Transaction submitted: <a id="txLink" target="_blank" rel="noreferrer"></a>
-    </div>
-
-    <section id="votingSection" hidden>
-      <h3>Cast your vote</h3>
-      <p class="section-hint">Votes cost credits quadratically, so 3 votes cost 9 credits.</p>
-      <div class="vote-row">
-        <input type="number" id="voteInput" min="1" step="1" placeholder="Votes" />
-        <button id="voteBtn" class="btn btn-primary">Submit vote</button>
-      </div>
-      <p id="voteCostPreview"></p>
-    </section>
-
-    <section id="completionVoting" hidden>
-      <h3>Did they fix it?</h3>
-      <p class="section-hint">Your verification decides whether the remaining funds are released.</p>
-      <div class="vote-row">
-        <button id="yesBtn" class="btn btn-primary">Yes, it is fixed</button>
-        <button id="noBtn" class="btn btn-danger">No, still broken</button>
-      </div>
-    </section>
-
-    <p id="completionCountdown" class="countdown" hidden></p>
-    <p id="alreadyCompletionVotedMsg" class="notice notice-info" hidden></p>
-
-    <section id="completionStats" class="completion-stats" hidden>
-      <div class="stat-pill stat-yes"><strong id="yesCount">0</strong> approved</div>
-      <div class="stat-pill stat-no"><strong id="noCount">0</strong> rejected</div>
-    </section>
-
-    <section class="history">
-      <h3>Vote history</h3>
-      <ul id="voteHistory" class="tx-list"></ul>
-    </section>
-
-    <section class="history">
-      <h3>Treasury activity</h3>
-      <ul id="escrowTxList" class="tx-list"></ul>
-    </section>
-  </div>
+  </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script type="module" src="../js/supabaseClient.js"></script>
   <script type="module" src="../js/pages/problem.js"></script>
 </body>
+
 </html>

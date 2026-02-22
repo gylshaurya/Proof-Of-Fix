@@ -6,14 +6,17 @@ import {
   txUrl,
   hasWallet,
 } from "../blockchain.js";
-import { client, requireProfile, bindLogout, go } from "../lib/session.js";
+import { client, requireProfile, bindLogout } from "../lib/session.js";
 import { h, fill, setText, show } from "../lib/dom.js";
 import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
 import { rupees, ethAmount } from "../lib/format.js";
 import { mountWalletCard } from "../lib/wallet.js";
 import { STATUS, STATUS_LABEL } from "../config.js";
+import { initTheme, bindThemeToggle } from "../lib/theme.js";
 
 let profile;
+
+initTheme();
 
 document.addEventListener("DOMContentLoaded", async () => {
   const context = await requireProfile("id, full_name, locality, wallet, isContractor", "contractor");
@@ -23,6 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setText("#localityBadge", profile.locality || "No locality");
   bindLogout("#logoutBtn");
+  bindThemeToggle();
 
   mountWalletCard(
     document.getElementById("wallet-card"),
@@ -33,8 +37,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       loadProblems();
     }
   );
-
-  document.getElementById("homeBtn")?.addEventListener("click", () => go("home"));
 
   await refreshBalance();
   await loadProblems();
@@ -64,7 +66,7 @@ async function refreshBalance() {
 
 async function loadProblems() {
   const container = document.getElementById("problemsContainer");
-  fill(container, skeleton(2));
+  fill(container, skeleton(2, 220));
 
   if (!profile.wallet) {
     fill(
@@ -107,7 +109,7 @@ async function loadProblems() {
 
 function jobCard(problem) {
   const remark = h("textarea", {
-    class: "remark-input",
+    class: "field",
     rows: "3",
     maxlength: "400",
     placeholder: "Add a work update residents can read...",
@@ -138,12 +140,12 @@ function jobCard(problem) {
 
   return h(
     "article",
-    { class: "problem-card" },
+    { class: "card card-pad job-card" },
     h("h3", null, problem.title),
     h(
       "div",
       { class: "card-meta" },
-      h("span", { class: `status-badge status-${problem.status_code}` }, STATUS_LABEL[problem.status_code]),
+      h("span", { class: `badge status-${problem.status_code}` }, STATUS_LABEL[problem.status_code]),
       h("span", null, `Budget ${rupees(problem.cost)}`),
       problem.advance_paid ? h("span", null, `Advance ${rupees(problem.advance_paid)}`) : null
     ),
@@ -156,7 +158,7 @@ function jobCard(problem) {
         )
       : null,
     remark,
-    h("div", { class: "card-actions" }, ...actions)
+    h("div", { class: "job-actions" }, ...actions)
   );
 }
 

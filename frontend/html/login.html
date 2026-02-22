@@ -1,25 +1,76 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login</title>
-    <link rel="stylesheet" href="../css/ui.css" />
-    <link rel="stylesheet" href="../css/login.css" />
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  </head>
-  <body>
-    <div class="signup-container">
-      <h2>Login</h2>
-      <form id="login-form">
-        <input type="email" id="email" placeholder="Email" required />
-        <input type="password" id="password" placeholder="Password" required />
-        <button type="submit">Login</button>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in — Proof of Fix</title>
+  <link rel="stylesheet" href="../css/ui.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+</head>
+
+<body class="auth">
+  <section class="auth-panel">
+    <div class="auth-form-panel">
+      <a class="auth-brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+
+      <h1>Welcome back</h1>
+      <p class="auth-sub">Sign in to vote on what your sector fixes next.</p>
+
+      <form id="login-form" class="auth-form" novalidate>
+        <div>
+          <label class="label" for="email">Email</label>
+          <input class="field" type="email" id="email" autocomplete="email" placeholder="you@example.com" required />
+        </div>
+        <div>
+          <label class="label" for="password">Password</label>
+          <input class="field" type="password" id="password" autocomplete="current-password" placeholder="••••••••"
+            required />
+        </div>
+        <button type="submit" class="btn btn-lg btn-block">Sign in</button>
+        <p id="message" class="auth-msg" role="status" aria-live="polite"></p>
       </form>
-      <p>Don't have an account? <a href="signup.html" class="sign-up-link">Sign up here</a>.</p>
-      <p id="message"></p>
+
+      <p class="auth-alt">New here? <a href="signup.html">Create an account</a></p>
     </div>
-    <script type="module" src="../js/supabaseClient.js"></script>
-    <script type="module" src="../js/pages/login.js"></script>
-  </body>
+  </section>
+
+  <aside class="auth-panel auth-aside">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="auth-aside-inner">
+      <p class="auth-quote">Half the budget moves on day one. The rest waits for your vote.</p>
+      <ul class="auth-points">
+        <li>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m20 6-11 11-5-5" />
+          </svg>
+          <span>Report problems in your sector with a photo and an estimated cost.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m20 6-11 11-5-5" />
+          </svg>
+          <span>Spend 100 credits a round to prioritise what actually matters to you.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m20 6-11 11-5-5" />
+          </svg>
+          <span>Verify the repair before the contractor sees the second half.</span>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="../js/supabaseClient.js"></script>
+  <script type="module" src="../js/pages/login.js"></script>
+</body>
+
 </html>

@@ -1,28 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin | Proof of Fix</title>
+  <title>Ward office — Proof of Fix</title>
   <link rel="stylesheet" href="../css/ui.css" />
-  <link rel="stylesheet" href="../css/admin.css" />
+  <link rel="stylesheet" href="../css/app.css" />
 </head>
 
 <body>
-  <header class="app-header">
-    <div class="header-left">
-      <h1>Government Panel</h1>
-      <p>Open voting, fund escrows and settle completed work</p>
-    </div>
-    <div class="header-right">
-      <span id="roundInfo" class="chip"></span>
-      <span id="quorumInfo" class="chip chip-muted"></span>
-      <button id="newRoundBtn" class="btn btn-ghost">New round</button>
-      <button id="logoutBtn" class="btn btn-ghost">Log out</button>
+  <header class="app-bar">
+    <div class="shell app-bar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+      <nav class="app-nav" aria-label="Main">
+        <a href="admin.html" aria-current="page">Ward office</a>
+        <a href="home.html">Issues</a>
+      </nav>
+      <div class="app-actions">
+        <span class="chip" id="roundInfo">Round —</span>
+        <span class="chip" id="quorumInfo">Quorum —</span>
+        <button id="newRoundBtn" class="btn btn-sm btn-quiet">New round</button>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
+          </svg>
+        </button>
+        <button id="logoutBtn" class="btn btn-sm btn-ghost">Sign out</button>
+      </div>
     </div>
   </header>
 
-  <main class="main-container">
+  <main class="shell page">
+    <div class="page-head">
+      <div>
+        <h1>Ward office</h1>
+        <p>Open voting rounds, fund the winners, settle completed work.</p>
+      </div>
+    </div>
+
     <div id="walletNotice" class="notice notice-warn" hidden>
       MetaMask is required. Connect the government wallet to manage problems on chain.
     </div>
@@ -34,4 +55,5 @@
   <script type="module" src="../js/supabaseClient.js"></script>
   <script type="module" src="../js/pages/admin.js"></script>
 </body>
+
 </html>

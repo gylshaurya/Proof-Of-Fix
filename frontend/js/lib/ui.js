@@ -75,14 +75,16 @@ export function confirmAction(message) {
   return window.confirm(message);
 }
 
-export function skeleton(count = 3) {
-  return Array.from({ length: count }, () => h("div", { class: "skeleton-card" }));
+export function skeleton(count = 3, height = 168) {
+  return Array.from({ length: count }, () =>
+    h("div", { class: "skeleton", style: { height: `${height}px` } })
+  );
 }
 
 export function emptyState(title, detail) {
   return h(
     "div",
-    { class: "empty-state" },
+    { class: "empty" },
     h("p", { class: "empty-title" }, title),
     detail ? h("p", { class: "empty-detail" }, detail) : null
   );

@@ -4,6 +4,7 @@ import { readableError, skeleton, emptyState } from "../lib/ui.js";
 import { rupees, relativeTime } from "../lib/format.js";
 import { mountWalletCard } from "../lib/wallet.js";
 import { STATUS, STATUS_LABEL } from "../config.js";
+import { initTheme, bindThemeToggle } from "../lib/theme.js";
 import { mountReportDialog } from "./report.js";
 
 const PLACEHOLDER =
@@ -14,22 +15,33 @@ const PLACEHOLDER =
 
 const ACTIVE = [STATUS.VOTING, STATUS.UNDER_PROGRESS, STATUS.COMPLETION_VOTING];
 
+initTheme();
+
 document.addEventListener("DOMContentLoaded", async () => {
   const context = await requireProfile("id, full_name, locality, wallet, isContractor");
   if (!context) return;
 
   const { profile } = context;
 
+  const name = profile.full_name || "Resident";
+
   fill(
     document.getElementById("user-info"),
-    h("p", { class: "user-name" }, profile.full_name || "Resident"),
+    h("div", { class: "avatar", "aria-hidden": "true" }, name.trim().charAt(0).toUpperCase()),
     h(
-      "p",
-      { class: "user-meta" },
-      h("span", { class: "chip" }, profile.locality || "No locality"),
-      h("span", { class: "chip chip-muted" }, profile.isContractor ? "Contractor" : "Resident")
+      "div",
+      null,
+      h("p", { class: "identity-name" }, name),
+      h(
+        "div",
+        { class: "identity-meta" },
+        h("span", { class: "chip" }, profile.locality || "No sector set"),
+        h("span", { class: "chip" }, profile.isContractor ? "Contractor" : "Resident")
+      )
     )
   );
+
+  bindThemeToggle();
 
   mountWalletCard(document.getElementById("wallet-card"), {
     userId: profile.id,
@@ -37,10 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   const contractorBtn = document.getElementById("contractor-btn");
-  if (contractorBtn && profile.isContractor) {
-    contractorBtn.hidden = false;
-    contractorBtn.addEventListener("click", () => go("contractor"));
-  }
+  if (contractorBtn && profile.isContractor) contractorBtn.hidden = false;
 
   bindLogout("#logout");
 
@@ -64,7 +73,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function loadProblems(locality) {
   const container = document.getElementById("cards-container");
-  fill(container, skeleton(3));
+  fill(container, skeleton(3, 300));
 
   if (!locality) {
     fill(container, emptyState("No locality set", "Update your profile to see local issues."));
@@ -105,7 +114,7 @@ function card(problem) {
   return h(
     "article",
     {
-      class: "problem-card",
+      class: "issue-card",
       tabindex: "0",
       role: "link",
       onClick: () => go("problem", { problemId: problem.id }),
@@ -116,25 +125,30 @@ function card(problem) {
         }
       },
     },
-    h("img", {
-      src: problem.image_url || PLACEHOLDER,
-      alt: problem.title,
-      loading: "lazy",
-      onError: (event) => {
-        event.currentTarget.src = PLACEHOLDER;
-      },
-    }),
     h(
       "div",
-      { class: "card-body" },
-      h("h4", null, problem.title),
+      { class: "issue-media" },
+      h("img", {
+        src: problem.image_url || PLACEHOLDER,
+        alt: "",
+        loading: "lazy",
+        onError: (event) => {
+          event.currentTarget.src = PLACEHOLDER;
+        },
+      }),
+      h("span", { class: `badge status-${problem.status_code}` }, status)
+    ),
+    h(
+      "div",
+      { class: "issue-body" },
+      h("h3", null, problem.title),
       h("p", null, problem.description || "No description provided."),
       h(
         "div",
-        { class: "card-footer" },
-        h("span", { class: `status-badge status-${problem.status_code}` }, status),
-        problem.cost ? h("span", { class: "card-cost" }, rupees(problem.cost)) : null,
-        h("span", { class: "card-time" }, relativeTime(problem.created_at))
+        { class: "issue-foot" },
+        problem.cost ? h("span", { class: "issue-cost" }, rupees(problem.cost)) : null,
+        problem.vote_count ? h("span", null, `${problem.vote_count} votes`) : null,
+        h("span", { class: "issue-time" }, relativeTime(problem.created_at))
       )
     )
   );

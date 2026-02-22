@@ -128,21 +128,21 @@ function buildDialog(locality) {
     { class: "report-dialog", id: "report-dialog" },
     h(
       "form",
-      { method: "dialog", class: "report-form", novalidate: true },
+      { method: "dialog", class: "sheet report-form", novalidate: true },
       h("h3", null, "Report an issue"),
       h("p", { class: "report-hint" }, `This will be filed under ${locality || "your locality"}.`),
 
-      h("label", { for: "report-title" }, "Title"),
-      h("input", { id: "report-title", name: "title", type: "text", maxlength: "80", placeholder: "Broken streetlight near the park" }),
+      h("label", { class: "label", for: "report-title" }, "Title"),
+      h("input", { class: "field", id: "report-title", name: "title", type: "text", maxlength: "80", placeholder: "Broken streetlight near the park" }),
 
-      h("label", { for: "report-description" }, "What is wrong?"),
-      h("textarea", { id: "report-description", name: "description", rows: "4", maxlength: "500", placeholder: "Describe the problem and how it affects the area" }),
+      h("label", { class: "label", for: "report-description" }, "What is wrong?"),
+      h("textarea", { class: "field", id: "report-description", name: "description", rows: "4", maxlength: "500", placeholder: "Describe the problem and how it affects the area" }),
 
-      h("label", { for: "report-cost" }, "Estimated cost (Rs)"),
-      h("input", { id: "report-cost", name: "cost", type: "number", min: "1000", step: "500", placeholder: "25000" }),
+      h("label", { class: "label", for: "report-cost" }, "Estimated cost (Rs)"),
+      h("input", { class: "field", id: "report-cost", name: "cost", type: "number", min: "1000", step: "500", placeholder: "25000" }),
 
-      h("label", { for: "report-photo" }, "Photo (optional)"),
-      h("input", { id: "report-photo", name: "photo", type: "file", accept: "image/jpeg,image/png,image/webp" }),
+      h("label", { class: "label", for: "report-photo" }, "Photo (optional)"),
+      h("input", { class: "field", id: "report-photo", name: "photo", type: "file", accept: "image/jpeg,image/png,image/webp" }),
       h("img", { id: "report-preview", class: "report-preview", alt: "Selected photo", hidden: true }),
 
       h(

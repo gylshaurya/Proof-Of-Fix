@@ -1,45 +1,108 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sign Up</title>
-    <link rel="stylesheet" href="../css/ui.css" />
-    <link rel="stylesheet" href="../css/signup.css" />
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  </head>
-  <body>
-    <div class="signup-container">
-      <h2>Create Account</h2>
-      <form id="signup-form">
-        <input type="text" id="name" placeholder="Full Name" required />
-        <input type="email" id="email" placeholder="Email" required />
-        <input type="password" id="password" placeholder="Password" required />
-        <select id="locality" required>
-          <option value="">Select Locality</option>
-          <option value="Sector 1">Sector 1</option>
-          <option value="Sector 2">Sector 2</option>
-          <option value="Sector 3">Sector 3</option>
-          <option value="Sector 4">Sector 4</option>
-          <option value="Sector 5">Sector 5</option>
-        </select>
-        <div style="margin-bottom: 15px">
-          <label style="display: block; font-weight: bold; margin-bottom: 5px">User Type</label>
-          <label style="margin-right: 15px">
-            <input type="radio" name="user_type" value="resident" checked />
-            Resident
-          </label>
-          <label>
-            <input type="radio" name="user_type" value="contractor" />
-            Contractor
-          </label>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create account — Proof of Fix</title>
+  <link rel="stylesheet" href="../css/ui.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+</head>
+
+<body class="auth">
+  <section class="auth-panel">
+    <div class="auth-form-panel">
+      <a class="auth-brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+
+      <h1>Create your account</h1>
+      <p class="auth-sub">Pick your sector and you're in. No wallet needed until you vote.</p>
+
+      <form id="signup-form" class="auth-form" novalidate>
+        <div>
+          <label class="label" for="name">Full name</label>
+          <input class="field" type="text" id="name" autocomplete="name" placeholder="Your name" required />
         </div>
-        <button type="submit">Sign Up</button>
+        <div>
+          <label class="label" for="email">Email</label>
+          <input class="field" type="email" id="email" autocomplete="email" placeholder="you@example.com" required />
+        </div>
+        <div>
+          <label class="label" for="password">Password</label>
+          <input class="field" type="password" id="password" autocomplete="new-password"
+            placeholder="At least 8 characters" required />
+        </div>
+        <div>
+          <label class="label" for="locality">Sector</label>
+          <select class="field" id="locality" required>
+            <option value="">Select your sector</option>
+            <option value="Sector 1">Sector 1</option>
+            <option value="Sector 2">Sector 2</option>
+            <option value="Sector 3">Sector 3</option>
+            <option value="Sector 4">Sector 4</option>
+            <option value="Sector 5">Sector 5</option>
+          </select>
+        </div>
+
+        <fieldset>
+          <legend class="label">I am a</legend>
+          <div class="radio-set">
+            <label class="radio-tile">
+              <input type="radio" name="user_type" value="resident" checked />
+              <strong>Resident</strong>
+              <span>Report issues and vote</span>
+            </label>
+            <label class="radio-tile">
+              <input type="radio" name="user_type" value="contractor" />
+              <strong>Contractor</strong>
+              <span>Take on funded work</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn-lg btn-block">Create account</button>
+        <p id="message" class="auth-msg" role="status" aria-live="polite"></p>
       </form>
-      <p>Already have an account? <a href="login.html" class="login-link">Login here</a>.</p>
-      <p id="message"></p>
+
+      <p class="auth-alt">Already have an account? <a href="login.html">Sign in</a></p>
     </div>
-    <script type="module" src="../js/supabaseClient.js"></script>
-    <script type="module" src="../js/pages/signup.js"></script>
-  </body>
+  </section>
+
+  <aside class="auth-panel auth-aside">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="auth-aside-inner">
+      <p class="auth-quote">Every rupee, every vote, every payout — on a chain anyone can read.</p>
+      <ul class="auth-points">
+        <li>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m20 6-11 11-5-5" />
+          </svg>
+          <span>Votes cost the square of your total, so nobody buys the outcome with volume.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m20 6-11 11-5-5" />
+          </svg>
+          <span>The escrow contract has no early-release function. Not even for the ward office.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m20 6-11 11-5-5" />
+          </svg>
+          <span>Reject the work and the money goes back to the treasury, automatically.</span>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="../js/supabaseClient.js"></script>
+  <script type="module" src="../js/pages/signup.js"></script>
+</body>
+
 </html>

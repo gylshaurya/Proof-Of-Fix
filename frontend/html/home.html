@@ -1,42 +1,61 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard | Proof of Fix</title>
+  <title>Your sector — Proof of Fix</title>
   <link rel="stylesheet" href="../css/ui.css" />
-  <link rel="stylesheet" href="../css/home.css" />
+  <link rel="stylesheet" href="../css/app.css" />
 </head>
+
 <body>
-  <header class="app-header">
-    <div class="header-left">
-      <h1>Civic Dashboard</h1>
-      <p>Issues reported in your neighbourhood</p>
-    </div>
-    <div class="header-right">
-      <div id="wallet-card" class="wallet-card"></div>
-      <button id="contractor-btn" class="btn btn-ghost" hidden>Contractor view</button>
-      <button id="logout" class="btn btn-ghost">Log out</button>
+  <header class="app-bar">
+    <div class="shell app-bar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Proof of Fix
+      </a>
+      <nav class="app-nav" aria-label="Main">
+        <a href="home.html" aria-current="page">Issues</a>
+        <a href="contractor.html" id="contractor-btn" hidden>Contractor</a>
+      </nav>
+      <div class="app-actions">
+        <div id="wallet-card" class="wallet-card"></div>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
+          </svg>
+        </button>
+        <button id="logout" class="btn btn-sm btn-ghost">Sign out</button>
+      </div>
     </div>
   </header>
 
-  <main class="main-container">
-    <section class="user-card">
-      <div id="user-info"></div>
-      <button id="report-btn" class="btn btn-primary">Report an issue</button>
-    </section>
-
-    <section class="problems-section">
-      <div class="section-head">
-        <h2>Local issues</h2>
-        <span class="count-pill"><span id="active-count">0</span> active</span>
+  <main class="shell page">
+    <div class="page-head">
+      <div>
+        <h1>Your sector</h1>
+        <p>Everything reported nearby, and where each one stands.</p>
       </div>
-      <div id="cards-container" class="cards-grid"></div>
-    </section>
+      <button id="report-btn" class="btn">Report an issue</button>
+    </div>
+
+    <section class="identity" id="user-info"></section>
+
+    <div class="section-head">
+      <h2>Local issues</h2>
+      <span class="chip"><span id="active-count">0</span> active</span>
+    </div>
+
+    <div id="cards-container" class="issue-grid"></div>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script type="module" src="../js/supabaseClient.js"></script>
   <script type="module" src="../js/pages/home.js"></script>
 </body>
+
 </html>
