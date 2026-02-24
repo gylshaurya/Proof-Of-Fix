@@ -147,25 +147,53 @@ to the deploying address. If you use a hardware wallet, swap `--account` for `--
 
 ## Database
 
-Supabase handles auth and everything that does not need to be on chain. `supabase/schema.sql`
-is the whole setup — run it in the SQL editor of a fresh project.
+Neon Postgres holds everything that does not need to be on chain, and Clerk handles auth. There
+is still no backend: the browser talks to Postgres directly over HTTP, and **Neon RLS** enforces
+authorisation inside the database using the Clerk JWT.
+
+`neon/schema.sql` is the whole setup — run it against a fresh Neon project.
 
 | Table | What it holds |
 | --- | --- |
-| `profiles` | name, locality, linked wallet, role flags |
+| `profiles` | name, sector, linked wallet, role flags |
 | `problems` | title, description, photo, cost, status, contractor, tx hashes |
 
-Row level security is on for both tables:
+How the authorisation actually works:
 
-- a profile row is created by a trigger on signup, so `isAdmin` can never be set by the client
-- role flags can only be changed by an admin
+1. Clerk issues a JWT for the signed-in user.
+2. The Neon serverless driver sends that JWT with every query.
+3. `pg_session_jwt` verifies it against Clerk's JWKS and exposes `auth.user_id()` in SQL.
+4. RLS policies and guard triggers decide what that user may read and write.
+
+The connection string in `frontend/js/config.js` uses Neon's **passwordless `authenticated`
+role**. It carries no secret and can do nothing without a valid JWT — the same trust model as a
+Supabase anon key, but the privileges live in Postgres rather than a vendor dashboard.
+
+- profiles are created on first sign-in with `is_admin` forced to false
+- role flags can only be changed by an admin, enforced by a trigger
 - residents can insert problems only in Draft, only for themselves
 - contractors can edit the remark on their own jobs and move a job to Completion Voting
-- everything else is admin only, enforced by a trigger rather than trusting the client
+- everything else is admin only
 
-Photos go to the `problem-images` storage bucket, one folder per user.
+Photos go to Vercel Blob through `api/upload.js`, which verifies the Clerk JWT and refuses any
+upload path that does not belong to the caller.
 
----
+### Why not Supabase
+
+The free tier allows two active projects and pauses a project after 7 days of inactivity, which
+needs a manual restore from the dashboard — fatal for a portfolio project someone opens months
+later. Neon allows 100 projects and only suspends compute, which resumes automatically on the
+next query.
+
+### Demo data
+
+```bash
+npm install
+DATABASE_OWNER_URL=... npm run seed
+```
+
+14 issues across the five sectors at various lifecycle stages. Every row is flagged `is_demo` and
+renders with a Demo badge, so nothing here can be mistaken for a real municipal record.
 
 ## Wallet linking
 
@@ -187,10 +215,17 @@ project does not have.
 forge install
 forge test
 
+# database
+psql $DATABASE_OWNER_URL -f neon/schema.sql
+npm install && npm run seed
+
 # frontend, any static server works
 python3 -m http.server 8000
 open http://localhost:8000/frontend/html/index.html
 ```
+
+Fill in `CLERK_PUBLISHABLE_KEY` and `DATABASE_URL` (the `authenticated` role string) in
+`frontend/js/config.js`, and point your Clerk instance at Neon RLS as its JWT provider.
 
 You need MetaMask on Sepolia and some test ETH. The app checks the network and offers to switch
 if you are on the wrong one.
@@ -218,12 +253,14 @@ python classifier.py
 contracts/        Voting.sol, Treasury.sol
 test/             Foundry tests
 script/           deploy script
-supabase/         schema, RLS policies, triggers
+neon/             schema, RLS policies, triggers
+api/              Vercel function for authenticated photo uploads
+scripts/          demo data seeder
 frontend/
   html/           one page per role
-  css/            ui.css is shared, one file per page
+  css/            ui.css is the design system, then landing / app / auth
   js/
-    lib/          dom, ui, session, wallet, format helpers
+    lib/          auth, db, session, wallet, dom, ui, theme, format
     pages/        one module per page
     abis/         generated from forge output
 classifier/       YOLO based issue detection, writes to Supabase
@@ -233,15 +270,17 @@ classifier/       YOLO based issue detection, writes to Supabase
 
 ## Stack
 
-Vanilla JS with ES modules, no build step. Ethers v5. Solidity 0.8.19 on Sepolia. Supabase for
-auth, Postgres and storage. Foundry for contracts. OpenCV and YOLOv8 for the classifier.
+Vanilla JS with ES modules, no build step. Ethers v5. Solidity 0.8.19 on Sepolia. Neon Postgres with
+RLS, Clerk for auth, Vercel Blob for photos. Foundry for contracts. OpenCV and YOLOv8 for the
+classifier.
 
 ---
 
 ## Known gaps
 
-- The classifier writes to `civic_issues`, but the app reads `problems`. The two halves are not
-  wired together yet, and the classifier stores local file paths rather than uploaded URLs.
+- The classifier still writes to Supabase and to a `civic_issues` table, while the app now reads
+  `problems` on Neon. The two halves are not wired together, and the classifier stores local file
+  paths rather than uploaded URLs.
 - Detection accuracy is unmeasured. The dataset filenames encode the true category, so scoring
   it is the obvious next step.
 - Voting costs the resident gas. Meta-transactions would remove the biggest adoption blocker.

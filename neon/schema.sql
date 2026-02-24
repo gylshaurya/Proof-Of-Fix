@@ -1,12 +1,12 @@
-create extension if not exists "pgcrypto";
+create extension if not exists pg_session_jwt;
 
 create table if not exists public.profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
+  id text primary key,
   full_name text not null,
   locality text,
   wallet text unique,
-  "isContractor" boolean not null default false,
-  "isAdmin" boolean not null default false,
+  is_contractor boolean not null default false,
+  is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -27,7 +27,8 @@ create table if not exists public.problems (
   escrow_tx text,
   settle_tx text,
   remark text,
-  reported_by uuid references public.profiles (id) on delete set null,
+  reported_by text references public.profiles (id) on delete set null,
+  is_demo boolean not null default false,
   created_at timestamptz not null default now(),
   constraint problems_status_code_range check (status_code between 0 and 5),
   constraint problems_cost_positive check (cost >= 0)
@@ -37,30 +38,6 @@ create index if not exists problems_locality_status_idx on public.problems (loca
 create index if not exists problems_contractor_idx on public.problems (lower(contractor_wallet));
 create index if not exists profiles_wallet_idx on public.profiles (lower(wallet));
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id, full_name, locality, "isContractor", "isAdmin")
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data ->> 'full_name', 'Resident'),
-    new.raw_user_meta_data ->> 'locality',
-    coalesce((new.raw_user_meta_data ->> 'is_contractor')::boolean, false),
-    false
-  );
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -68,7 +45,7 @@ security definer
 stable
 set search_path = public
 as $$
-  select coalesce((select "isAdmin" from public.profiles where id = auth.uid()), false);
+  select coalesce((select is_admin from public.profiles where id = auth.user_id()), false);
 $$;
 
 create or replace function public.guard_profile_update()
@@ -82,8 +59,8 @@ begin
     return new;
   end if;
 
-  if new."isAdmin" is distinct from old."isAdmin"
-     or new."isContractor" is distinct from old."isContractor" then
+  if new.is_admin is distinct from old.is_admin
+     or new.is_contractor is distinct from old.is_contractor then
     raise exception 'roles can only be changed by an administrator';
   end if;
 
@@ -110,7 +87,7 @@ begin
     return new;
   end if;
 
-  select wallet into caller_wallet from public.profiles where id = auth.uid();
+  select wallet into caller_wallet from public.profiles where id = auth.user_id();
 
   assigned_contractor := caller_wallet is not null
     and old.contractor_wallet is not null
@@ -156,12 +133,18 @@ alter table public.problems enable row level security;
 
 drop policy if exists "profiles readable by owner and admins" on public.profiles;
 create policy "profiles readable by owner and admins" on public.profiles
-  for select using (id = auth.uid() or public.is_admin());
+  for select to authenticated using (id = auth.user_id() or public.is_admin());
+
+drop policy if exists "profiles created by their owner" on public.profiles;
+create policy "profiles created by their owner" on public.profiles
+  for insert to authenticated
+  with check (id = auth.user_id() and is_admin = false);
 
 drop policy if exists "profiles updatable by owner" on public.profiles;
 create policy "profiles updatable by owner" on public.profiles
-  for update using (id = auth.uid() or public.is_admin())
-  with check (id = auth.uid() or public.is_admin());
+  for update to authenticated
+  using (id = auth.user_id() or public.is_admin())
+  with check (id = auth.user_id() or public.is_admin());
 
 drop policy if exists "problems readable by authenticated" on public.problems;
 create policy "problems readable by authenticated" on public.problems
@@ -171,7 +154,7 @@ drop policy if exists "residents report problems" on public.problems;
 create policy "residents report problems" on public.problems
   for insert to authenticated
   with check (
-    reported_by = auth.uid()
+    reported_by = auth.user_id()
     and status_code = 0
     and assigned = false
     and contractor_wallet is null
@@ -185,18 +168,9 @@ drop policy if exists "problems deletable by admins" on public.problems;
 create policy "problems deletable by admins" on public.problems
   for delete to authenticated using (public.is_admin());
 
-insert into storage.buckets (id, name, public)
-values ('problem-images', 'problem-images', true)
-on conflict (id) do nothing;
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.problems to authenticated;
 
-drop policy if exists "problem images are public" on storage.objects;
-create policy "problem images are public" on storage.objects
-  for select using (bucket_id = 'problem-images');
-
-drop policy if exists "residents upload their own photos" on storage.objects;
-create policy "residents upload their own photos" on storage.objects
-  for insert to authenticated
-  with check (
-    bucket_id = 'problem-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  );
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;

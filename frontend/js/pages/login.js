@@ -1,43 +1,59 @@
-import { client, loadProfile, go, homeFor } from "../lib/session.js";
+import { clerk } from "../lib/auth.js";
+import { loadProfile, go, homeFor } from "../lib/session.js";
+import { initTheme } from "../lib/theme.js";
 
-document.addEventListener("DOMContentLoaded", () => {
+initTheme();
+
+document.addEventListener("DOMContentLoaded", async () => {
   const form = document.getElementById("login-form");
   const message = document.getElementById("message");
   const submit = form.querySelector("button[type=submit]");
 
   function setMessage(value, kind = "") {
     message.textContent = value;
-    message.className = kind;
+    message.className = `auth-msg ${kind}`.trim();
+  }
+
+  const instance = await clerk();
+
+  if (instance.user) {
+    const profile = await loadProfile(instance.user.id).catch(() => null);
+    go(homeFor(profile));
+    return;
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value.trim();
+    const identifier = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       setMessage("Enter your email and password", "error");
       return;
     }
 
     submit.disabled = true;
+    submit.dataset.busy = "true";
     setMessage("Signing in...");
 
-    const { data, error } = await client().auth.signInWithPassword({ email, password });
-
-    if (error) {
-      submit.disabled = false;
-      setMessage(error.message, "error");
-      return;
-    }
-
     try {
-      const profile = await loadProfile(data.user.id, "isAdmin, isContractor");
+      const attempt = await instance.client.signIn.create({ identifier, password });
+
+      if (attempt.status !== "complete") {
+        setMessage("Additional verification is required, check your email", "error");
+        return;
+      }
+
+      await instance.setActive({ session: attempt.createdSessionId });
+
+      const profile = await loadProfile(instance.user?.id).catch(() => null);
       go(homeFor(profile));
     } catch (err) {
-      console.error(err);
-      go("home");
+      setMessage(err?.errors?.[0]?.longMessage || err?.message || "Could not sign in", "error");
+    } finally {
+      submit.disabled = false;
+      delete submit.dataset.busy;
     }
   });
 });

@@ -1,6 +1,10 @@
+import { clerk, currentUser, signOut, userName } from "./auth.js";
+import { one } from "./db.js";
+
 const PAGES = {
   landing: "index.html",
   login: "login.html",
+  signup: "signup.html",
   home: "home.html",
   admin: "admin.html",
   contractor: "contractor.html",
@@ -12,44 +16,50 @@ export function go(page, query) {
   window.location.href = query ? `${target}?${new URLSearchParams(query)}` : target;
 }
 
-export function client() {
-  return window.supabaseClient;
-}
-
-export async function currentSession() {
-  const {
-    data: { session },
-  } = await client().auth.getSession();
-  return session;
-}
-
-export async function requireSession() {
-  const session = await currentSession();
-  if (!session) {
+export async function requireUser() {
+  const user = await currentUser();
+  if (!user) {
     go("login");
     return null;
   }
-  return session;
+  return user;
 }
 
-export async function loadProfile(userId, columns = "*") {
-  const { data, error } = await client()
-    .from("profiles")
-    .select(columns)
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+export async function loadProfile(userId) {
+  return one`
+    select id, full_name, locality, wallet, is_contractor, is_admin
+    from profiles
+    where id = ${userId}
+  `;
 }
 
-export async function requireProfile(columns = "*", role) {
-  const session = await requireSession();
-  if (!session) return null;
+export async function ensureProfile(user) {
+  const existing = await loadProfile(user.id);
+  if (existing) return existing;
+
+  const meta = user.unsafeMetadata ?? {};
+
+  return one`
+    insert into profiles (id, full_name, locality, is_contractor, is_admin)
+    values (
+      ${user.id},
+      ${userName(user)},
+      ${meta.locality ?? null},
+      ${meta.isContractor === true},
+      false
+    )
+    on conflict (id) do update set full_name = excluded.full_name
+    returning id, full_name, locality, wallet, is_contractor, is_admin
+  `;
+}
+
+export async function requireProfile(role) {
+  const user = await requireUser();
+  if (!user) return null;
 
   let profile;
   try {
-    profile = await loadProfile(session.user.id, columns);
+    profile = await ensureProfile(user);
   } catch (err) {
     console.error(err);
     go("login");
@@ -61,17 +71,17 @@ export async function requireProfile(columns = "*", role) {
     return null;
   }
 
-  if (role === "admin" && !profile.isAdmin) {
+  if (role === "admin" && !profile.is_admin) {
     go("home");
     return null;
   }
 
-  if (role === "contractor" && !profile.isContractor) {
+  if (role === "contractor" && !profile.is_contractor) {
     go("home");
     return null;
   }
 
-  return { session, profile };
+  return { user, profile };
 }
 
 export function bindLogout(node) {
@@ -80,13 +90,15 @@ export function bindLogout(node) {
 
   button.addEventListener("click", async () => {
     button.disabled = true;
-    await client().auth.signOut();
+    await signOut();
     go("landing");
   });
 }
 
 export function homeFor(profile) {
-  if (profile?.isAdmin) return "admin";
-  if (profile?.isContractor) return "contractor";
+  if (profile?.is_admin) return "admin";
+  if (profile?.is_contractor) return "contractor";
   return "home";
 }
+
+export { clerk, currentUser };

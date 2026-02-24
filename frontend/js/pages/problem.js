@@ -9,7 +9,8 @@ import {
   txUrl,
   hasWallet,
 } from "../blockchain.js";
-import { client, requireProfile, bindLogout } from "../lib/session.js";
+import { requireProfile, bindLogout } from "../lib/session.js";
+import { one, sql } from "../lib/db.js";
 import { h, fill, setText, show } from "../lib/dom.js";
 import { toast, readableError, withBusy, emptyState } from "../lib/ui.js";
 import { rupees, shortAddress, shortHash, timeLeft } from "../lib/format.js";
@@ -26,7 +27,7 @@ let voting;
 let account;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const context = await requireProfile("id, locality, wallet, isContractor");
+  const context = await requireProfile();
   if (!context) return;
 
   bindLogout("#logoutBtn");
@@ -34,21 +35,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const problemId = new URLSearchParams(window.location.search).get("problemId");
   if (!problemId) {
-    fill(document.querySelector(".problem-container"), emptyState("No problem selected"));
+    fill(document.querySelector(".detail"), emptyState("No issue selected"));
     return;
   }
 
   chainId = toChainId(problemId);
 
-  const { data, error } = await client()
-    .from("problems")
-    .select("*")
-    .eq("id", problemId)
-    .maybeSingle();
+  let data = null;
+  try {
+    data = await one`select * from problems where id = ${problemId}`;
+  } catch (err) {
+    console.error(err);
+  }
 
-  if (error || !data) {
-    console.error(error);
-    fill(document.querySelector(".problem-container"), emptyState("Problem not found"));
+  if (!data) {
+    fill(document.querySelector(".detail"), emptyState("Issue not found"));
     return;
   }
 
@@ -245,12 +246,11 @@ async function setupVoting(profile) {
 }
 
 async function syncVoteCount(total) {
-  const { error } = await client()
-    .from("problems")
-    .update({ vote_count: Number(total) })
-    .eq("id", problem.id);
-
-  if (error) console.warn("vote count sync failed", error);
+  try {
+    await sql`update problems set vote_count = ${Number(total)} where id = ${problem.id}`;
+  } catch (err) {
+    console.warn("vote count sync failed", err);
+  }
 }
 
 async function setupCompletionVoting(profile) {

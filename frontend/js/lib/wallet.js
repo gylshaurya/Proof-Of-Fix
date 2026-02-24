@@ -1,21 +1,11 @@
 import { connect, onWalletChange, hasWallet } from "../blockchain.js";
-import { client } from "./session.js";
+import { sql } from "./db.js";
 import { toast, readableError, withBusy } from "./ui.js";
 import { shortAddress } from "./format.js";
 import { h, fill } from "./dom.js";
 
 export async function saveWallet(userId, address) {
-  const { error } = await client()
-    .from("profiles")
-    .update({ wallet: address })
-    .eq("id", userId);
-
-  if (error) {
-    if (error.code === "23505") {
-      throw new Error("That wallet is already linked to another account");
-    }
-    throw error;
-  }
+  await sql`update profiles set wallet = ${address} where id = ${userId}`;
 }
 
 export function mountWalletCard(root, { userId, wallet }, onChange) {

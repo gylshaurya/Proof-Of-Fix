@@ -1,26 +1,11 @@
-import { client } from "../lib/session.js";
+import { sql } from "../lib/db.js";
+import { uploadPhoto } from "../lib/storage.js";
 import { h } from "../lib/dom.js";
 import { toast, readableError } from "../lib/ui.js";
 import { STATUS } from "../config.js";
 
-const BUCKET = "problem-images";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
-
-async function uploadPhoto(file, userId) {
-  const extension = file.name.split(".").pop().toLowerCase();
-  const path = `${userId}/${Date.now()}.${extension}`;
-
-  const { error } = await client().storage.from(BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
-
-  if (error) throw error;
-
-  const { data } = client().storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
-}
 
 export function mountReportDialog({ trigger, locality, userId, onCreated }) {
   if (!trigger) return;
@@ -97,17 +82,10 @@ export function mountReportDialog({ trigger, locality, userId, onCreated }) {
       let imageUrl = null;
       if (file) imageUrl = await uploadPhoto(file, userId);
 
-      const { error } = await client().from("problems").insert({
-        title,
-        description,
-        cost,
-        locality,
-        image_url: imageUrl,
-        reported_by: userId,
-        status_code: STATUS.DRAFT,
-      });
-
-      if (error) throw error;
+      await sql`
+        insert into problems (title, description, cost, locality, image_url, reported_by, status_code)
+        values (${title}, ${description}, ${cost}, ${locality}, ${imageUrl}, ${userId}, ${STATUS.DRAFT})
+      `;
 
       dialog.close();
       toast("Issue reported, waiting for review", "success");

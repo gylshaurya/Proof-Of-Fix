@@ -1,3 +1,9 @@
+export const CLERK_PUBLISHABLE_KEY = "pk_test_REPLACE_ME";
+
+export const DATABASE_URL = "postgresql://authenticated@REPLACE-ME.neon.tech/neondb?sslmode=require";
+
+export const BLOB_UPLOAD_ENDPOINT = "/api/upload";
+
 export const VOTING_ADDRESS = "0x7bF485f40de66c9a891bf38246981cb4dFB136ee";
 export const TREASURY_ADDRESS = "0xF8924422c65342c7541e8A767D4E6926473E92AF";
 export const DEPLOY_BLOCK = 10133869;

@@ -6,7 +6,8 @@ import {
   txUrl,
   hasWallet,
 } from "../blockchain.js";
-import { client, requireProfile, bindLogout } from "../lib/session.js";
+import { requireProfile, bindLogout } from "../lib/session.js";
+import { sql } from "../lib/db.js";
 import { h, fill, setText, show } from "../lib/dom.js";
 import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
 import { rupees, ethAmount } from "../lib/format.js";
@@ -19,7 +20,7 @@ let profile;
 initTheme();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const context = await requireProfile("id, full_name, locality, wallet, isContractor", "contractor");
+  const context = await requireProfile("contractor");
   if (!context) return;
 
   profile = context.profile;
@@ -79,14 +80,15 @@ async function loadProblems() {
     return;
   }
 
-  const { data, error } = await client()
-    .from("problems")
-    .select("*")
-    .ilike("contractor_wallet", profile.wallet)
-    .order("status_code");
-
-  if (error) {
-    fill(container, emptyState("Could not load your jobs", readableError(error)));
+  let data;
+  try {
+    data = await sql`
+      select * from problems
+      where lower(contractor_wallet) = lower(${profile.wallet})
+      order by status_code asc
+    `;
+  } catch (err) {
+    fill(container, emptyState("Could not load your jobs", readableError(err)));
     return;
   }
 
@@ -171,14 +173,12 @@ async function saveRemark(event, id, remark) {
   }
 
   await withBusy(event.currentTarget, "Saving...", async () => {
-    const { error } = await client().from("problems").update({ remark: value }).eq("id", id);
-
-    if (error) {
-      toast(readableError(error), "error");
-      return;
+    try {
+      await sql`update problems set remark = ${value} where id = ${id}`;
+      toast("Update saved", "success");
+    } catch (err) {
+      toast(readableError(err), "error");
     }
-
-    toast("Update saved", "success");
   });
 }
 
@@ -193,15 +193,12 @@ async function markComplete(event, problem) {
       event.currentTarget.textContent = "Waiting for confirmation...";
       await tx.wait();
 
-      const { error } = await client()
-        .from("problems")
-        .update({
-          status: STATUS_LABEL[STATUS.COMPLETION_VOTING],
-          status_code: STATUS.COMPLETION_VOTING,
-        })
-        .eq("id", problem.id);
-
-      if (error) console.error(error);
+      await sql`
+        update problems
+        set status = ${STATUS_LABEL[STATUS.COMPLETION_VOTING]},
+            status_code = ${STATUS.COMPLETION_VOTING}
+        where id = ${problem.id}
+      `;
 
       toast("Residents can now verify your work", "success");
       await loadProblems();

@@ -7,7 +7,8 @@ import {
   inrToWei,
   hasWallet,
 } from "../blockchain.js";
-import { client, requireProfile, bindLogout } from "../lib/session.js";
+import { requireProfile, bindLogout } from "../lib/session.js";
+import { sql } from "../lib/db.js";
 import { h, fill, setText, show } from "../lib/dom.js";
 import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
 import { rupees, shortAddress, ethAmount } from "../lib/format.js";
@@ -19,7 +20,7 @@ let voting;
 initTheme();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const context = await requireProfile("id, isAdmin", "admin");
+  const context = await requireProfile("admin");
   if (!context) return;
 
   bindLogout("#logoutBtn");
@@ -58,10 +59,11 @@ async function startNewRound(event) {
       const tx = await contract.newRound();
       await tx.wait();
 
-      await client()
-        .from("problems")
-        .update({ status: STATUS_LABEL[STATUS.DRAFT], status_code: STATUS.DRAFT, vote_count: 0 })
-        .in("status_code", [STATUS.VOTING]);
+      await sql`
+        update problems
+        set status = ${STATUS_LABEL[STATUS.DRAFT]}, status_code = ${STATUS.DRAFT}, vote_count = 0
+        where status_code = ${STATUS.VOTING}
+      `;
 
       toast("New round started", "success");
       await loadChainInfo();
@@ -77,14 +79,11 @@ async function loadProblems() {
   const container = document.getElementById("problemsContainer");
   fill(container, skeleton(4, 190));
 
-  const { data, error } = await client()
-    .from("problems")
-    .select("*")
-    .order("status_code")
-    .order("locality");
-
-  if (error) {
-    fill(container, emptyState("Could not load problems", readableError(error)));
+  let data;
+  try {
+    data = await sql`select * from problems order by locality asc, status_code asc`;
+  } catch (err) {
+    fill(container, emptyState("Could not load problems", readableError(err)));
     return;
   }
 
@@ -201,13 +200,14 @@ function problemCard(problem) {
 
 async function openVoting(event, locality, problems) {
   await withBusy(event.currentTarget, "Opening...", async () => {
-    const { error } = await client()
-      .from("problems")
-      .update({ status: STATUS_LABEL[STATUS.VOTING], status_code: STATUS.VOTING })
-      .in("id", problems.map((p) => p.id));
-
-    if (error) {
-      toast(readableError(error), "error");
+    try {
+      await sql`
+        update problems
+        set status = ${STATUS_LABEL[STATUS.VOTING]}, status_code = ${STATUS.VOTING}
+        where id = any(${problems.map((p) => p.id)})
+      `;
+    } catch (err) {
+      toast(readableError(err), "error");
       return;
     }
 
@@ -248,21 +248,21 @@ async function closeVoting(event, locality, problems) {
       event.currentTarget.textContent = "Waiting for confirmation...";
       await tx.wait();
 
-      await client()
-        .from("problems")
-        .update({
-          status: STATUS_LABEL[STATUS.UNDER_PROGRESS],
-          status_code: STATUS.UNDER_PROGRESS,
-          vote_count: winner.votes,
-        })
-        .eq("id", winner.problem.id);
+      await sql`
+        update problems
+        set status = ${STATUS_LABEL[STATUS.UNDER_PROGRESS]},
+            status_code = ${STATUS.UNDER_PROGRESS},
+            vote_count = ${winner.votes}
+        where id = ${winner.problem.id}
+      `;
 
       const losers = tallies.slice(1).map((t) => t.problem.id);
       if (losers.length) {
-        await client()
-          .from("problems")
-          .update({ status: STATUS_LABEL[STATUS.DRAFT], status_code: STATUS.DRAFT })
-          .in("id", losers);
+        await sql`
+          update problems
+          set status = ${STATUS_LABEL[STATUS.DRAFT]}, status_code = ${STATUS.DRAFT}
+          where id = any(${losers})
+        `;
       }
 
       toast(`${winner.problem.title} selected for funding`, "success");
@@ -316,20 +316,19 @@ async function createEscrow(event, problem, contractorAddress) {
       const tx = await treasury.createEscrow(chainId, address, { value });
       await tx.wait();
 
-      const { error } = await client()
-        .from("problems")
-        .update({
-          assigned: true,
-          contractor_wallet: address,
-          escrow_wei: value.toString(),
-          advance_paid: problem.cost / 2,
-          escrow_tx: tx.hash,
-        })
-        .eq("id", problem.id);
-
-      if (error) {
+      try {
+        await sql`
+          update problems
+          set assigned = true,
+              contractor_wallet = ${address},
+              escrow_wei = ${value.toString()},
+              advance_paid = ${problem.cost / 2},
+              escrow_tx = ${tx.hash}
+          where id = ${problem.id}
+        `;
+      } catch (err) {
         toast("Escrow funded but the database did not update, refresh and check", "error");
-        console.error(error);
+        console.error(err);
         return;
       }
 
@@ -365,14 +364,13 @@ async function settle(event, problem) {
       const finalizeTx = await treasury.finalize(chainId);
       await finalizeTx.wait();
 
-      await client()
-        .from("problems")
-        .update({
-          status: approved ? STATUS_LABEL[STATUS.COMPLETED] : STATUS_LABEL[STATUS.FAILED],
-          status_code: approved ? STATUS.COMPLETED : STATUS.FAILED,
-          settle_tx: finalizeTx.hash,
-        })
-        .eq("id", problem.id);
+      await sql`
+        update problems
+        set status = ${approved ? STATUS_LABEL[STATUS.COMPLETED] : STATUS_LABEL[STATUS.FAILED]},
+            status_code = ${approved ? STATUS.COMPLETED : STATUS.FAILED},
+            settle_tx = ${finalizeTx.hash}
+        where id = ${problem.id}
+      `;
 
       toast(
         approved ? "Work approved, final payment released" : "Work rejected, funds returned to treasury",
