@@ -1,4 +1,19 @@
+create extension if not exists pgcrypto;
 create extension if not exists pg_session_jwt;
+
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin;
+  end if;
+
+  if not exists (select 1 from pg_roles where rolname = 'anonymous') then
+    create role anonymous nologin;
+  end if;
+end
+$$;
+
+grant authenticated, anonymous to current_user;
 
 create table if not exists public.profiles (
   id text primary key,
@@ -128,6 +143,13 @@ create trigger problems_guard_columns
   before update on public.problems
   for each row execute function public.guard_problem_update();
 
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.problems to authenticated;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+
 alter table public.profiles enable row level security;
 alter table public.problems enable row level security;
 
@@ -168,9 +190,3 @@ drop policy if exists "problems deletable by admins" on public.problems;
 create policy "problems deletable by admins" on public.problems
   for delete to authenticated using (public.is_admin());
 
-grant usage on schema public to authenticated;
-grant select, insert, update, delete on public.profiles to authenticated;
-grant select, insert, update, delete on public.problems to authenticated;
-
-alter default privileges in schema public
-  grant select, insert, update, delete on tables to authenticated;

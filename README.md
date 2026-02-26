@@ -151,7 +151,9 @@ Neon Postgres holds everything that does not need to be on chain, and Clerk hand
 is still no backend: the browser talks to Postgres directly over HTTP, and **Neon RLS** enforces
 authorisation inside the database using the Clerk JWT.
 
-`neon/schema.sql` is the whole setup — run it against a fresh Neon project.
+`neon/schema.sql` is the whole setup — run it against a fresh Neon project with the
+**`neondb_owner`** connection string. It creates the `authenticated` and `anonymous` roles itself
+if the Neon console has not already made them, so the order of setup steps does not matter.
 
 | Table | What it holds |
 | --- | --- |
@@ -165,9 +167,31 @@ How the authorisation actually works:
 3. `pg_session_jwt` verifies it against Clerk's JWKS and exposes `auth.user_id()` in SQL.
 4. RLS policies and guard triggers decide what that user may read and write.
 
-The connection string in `frontend/js/config.js` uses Neon's **passwordless `authenticated`
-role**. It carries no secret and can do nothing without a valid JWT — the same trust model as a
-Supabase anon key, but the privileges live in Postgres rather than a vendor dashboard.
+### Why the keys sit in `config.js` and not `.env`
+
+This is a static site. There is no server, so there is no `.env` at runtime — anything the browser
+needs, the browser can display. (A build step does not change this; it only inlines the value into
+the bundle, where anyone can still read it.) So the question is never *where to hide a value*, it
+is *whether the value is safe to be public*.
+
+Two values ship to the browser, and both are designed for it:
+
+- **`CLERK_PUBLISHABLE_KEY`** (`pk_...`) identifies your Clerk instance and grants nothing. Clerk
+  puts it in a `<script>` tag on every site that uses them. The **secret** key (`sk_...`) is a
+  different value and never touches the frontend.
+- **`DATABASE_URL`** uses Neon's **passwordless `authenticated` role** — there is no credential in
+  the string. Without a valid Clerk JWT, `auth.user_id()` is null and every RLS policy denies the
+  query. It is an address, not a key.
+
+The values that *are* secret stay in `.env` and never reach the browser: `DATABASE_OWNER_URL`
+(full privileges), `BLOB_READ_WRITE_TOKEN`, `ETHERSCAN_API_KEY`, and the deploy key, which lives
+in the Foundry keystore rather than a file at all.
+
+The honest trade-off: because the endpoint is public, anyone can send queries at it — RLS is the
+only thing stopping them. That is the same model Supabase uses, and it means the policies in
+`neon/schema.sql` are load-bearing. If you would rather not expose the endpoint at all, move the
+queries behind Vercel functions in `api/` so only the server holds the connection string; you lose
+the no-backend property but gain a second layer.
 
 - profiles are created on first sign-in with `is_admin` forced to false
 - role flags can only be changed by an admin, enforced by a trigger
