@@ -1,4 +1,4 @@
-export const CLERK_PUBLISHABLE_KEY = "pk_test_REPLACE_ME";
+export const CLERK_PUBLISHABLE_KEY = "pk_test_bWFueS13aGlwcGV0LTk4LmNsZXJrLmFjY291bnRzLmRldiQ";
 
 export const DATABASE_URL = "postgresql://authenticated@REPLACE-ME.neon.tech/neondb?sslmode=require";
 

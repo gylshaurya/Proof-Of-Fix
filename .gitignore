@@ -8,6 +8,8 @@
 /broadcast/
 /lib/
 
+node_modules/
+
 __pycache__/
 *.pyc
 .venv/

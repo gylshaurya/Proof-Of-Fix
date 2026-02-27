@@ -5,6 +5,12 @@ import { authToken } from "./auth.js";
 let client = null;
 
 function connection() {
+  if (DATABASE_URL.includes("REPLACE-ME")) {
+    throw new Error(
+      "DATABASE_URL is not set. Paste your Neon 'authenticated' connection string into frontend/js/config.js"
+    );
+  }
+
   if (!client) {
     client = neon(DATABASE_URL, { authToken });
   }
