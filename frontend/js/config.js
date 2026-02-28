@@ -1,6 +1,6 @@
 export const CLERK_PUBLISHABLE_KEY = "pk_test_bWFueS13aGlwcGV0LTk4LmNsZXJrLmFjY291bnRzLmRldiQ";
 
-export const DATABASE_URL = "postgresql://authenticated@REPLACE-ME.neon.tech/neondb?sslmode=require";
+export const DATABASE_URL = "postgresql://authenticated@ep-muddy-dream-azv15q0i-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 
 export const BLOB_UPLOAD_ENDPOINT = "/api/upload";
 

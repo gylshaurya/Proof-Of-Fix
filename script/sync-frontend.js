@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
+import path from "node:path";
 
 const CHAIN_ID = process.argv[2] || "11155111";
 const runFile = path.join("broadcast", "Deploy.s.sol", CHAIN_ID, "run-latest.json");

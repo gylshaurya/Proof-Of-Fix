@@ -13,7 +13,14 @@ begin
 end
 $$;
 
-grant authenticated, anonymous to current_user;
+do $$
+begin
+  execute 'grant authenticated, anonymous to current_user';
+exception
+  when others then
+    raise notice 'skipping role grant (%), this is only needed for SET ROLE testing', sqlerrm;
+end
+$$;
 
 create table if not exists public.profiles (
   id text primary key,

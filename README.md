@@ -239,13 +239,25 @@ project does not have.
 forge install
 forge test
 
-# database
-psql $DATABASE_OWNER_URL -f neon/schema.sql
-npm install && npm run seed
+# database — put DATABASE_OWNER_URL in .env first
+npm install
+npm run db:push        # applies neon/schema.sql
+npm run seed           # 14 demo issues across the five sectors
+npm run make-admin     # lists accounts; pass a name to promote one
 
 # frontend, any static server works
 python3 -m http.server 8000
 open http://localhost:8000/frontend/html/index.html
+```
+
+### Making someone the ward office
+
+Nothing in the interface grants admin, on purpose — the admin wallet funds escrows and settles
+payments, so it cannot be self-service. Sign up in the app first so the profile row exists, then:
+
+```bash
+npm run make-admin                    # lists every account with its id
+npm run make-admin -- "Your Name"     # promotes that one
 ```
 
 Fill in `CLERK_PUBLISHABLE_KEY` and `DATABASE_URL` (the `authenticated` role string) in
