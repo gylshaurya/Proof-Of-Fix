@@ -44,6 +44,21 @@ export async function signOut() {
   await instance.signOut();
 }
 
+export async function passwordPolicy() {
+  const instance = await clerk();
+  const settings =
+    instance.__unstable__environment?.userSettings?.passwordSettings ??
+    instance.__unstable__environment?.userSettings?.password_settings;
+
+  const minLength = settings?.minLength ?? settings?.min_length ?? null;
+
+  return {
+    minLength: Number.isInteger(minLength) && minLength > 0 ? minLength : null,
+    requireSpecial: Boolean(settings?.requireSpecialChar ?? settings?.require_special_char),
+    requireNumber: Boolean(settings?.requireNumbers ?? settings?.require_numbers),
+  };
+}
+
 export function userEmail(user) {
   return user?.primaryEmailAddress?.emailAddress ?? "";
 }

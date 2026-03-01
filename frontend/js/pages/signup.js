@@ -1,8 +1,6 @@
-import { clerk } from "../lib/auth.js";
+import { clerk, passwordPolicy } from "../lib/auth.js";
 import { go } from "../lib/session.js";
 import { initTheme } from "../lib/theme.js";
-
-const MIN_PASSWORD = 8;
 
 initTheme();
 
@@ -23,6 +21,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  const policy = await passwordPolicy();
+  const passwordField = document.getElementById("password");
+  const passwordHint = document.getElementById("password-hint");
+
+  const rules = [
+    policy.minLength ? `at least ${policy.minLength} characters` : null,
+    policy.requireNumber ? "a number" : null,
+    policy.requireSpecial ? "a special character" : null,
+  ].filter(Boolean);
+
+  if (rules.length) {
+    passwordHint.textContent = `Needs ${rules.join(", ")}.`;
+    passwordField.placeholder = `At least ${policy.minLength ?? 8} characters`;
+    passwordField.minLength = policy.minLength ?? 0;
+  } else {
+    passwordHint.textContent = "";
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -37,8 +53,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    if (password.length < MIN_PASSWORD) {
-      setMessage(`Password must be at least ${MIN_PASSWORD} characters`, "error");
+    if (policy.minLength && password.length < policy.minLength) {
+      setMessage(`Password must be at least ${policy.minLength} characters`, "error");
       return;
     }
 
