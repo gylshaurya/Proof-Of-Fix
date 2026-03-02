@@ -1,5 +1,6 @@
 import { clerk, currentUser, signOut, userName } from "./auth.js";
 import { one } from "./db.js";
+import { fatalError } from "./ui.js";
 
 const PAGES = {
   landing: "index.html",
@@ -62,12 +63,20 @@ export async function requireProfile(role) {
     profile = await ensureProfile(user);
   } catch (err) {
     console.error(err);
-    go("login");
+    fatalError(
+      "Signed in, but the database refused the request",
+      err.message,
+      { onSignOut: async () => { await signOut(); go("landing"); } }
+    );
     return null;
   }
 
   if (!profile) {
-    go("login");
+    fatalError(
+      "Your profile row could not be created",
+      "The insert returned nothing. Check the profiles insert policy in neon/schema.sql.",
+      { onSignOut: async () => { await signOut(); go("landing"); } }
+    );
     return null;
   }
 

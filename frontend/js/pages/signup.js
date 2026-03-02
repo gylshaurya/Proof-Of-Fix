@@ -73,8 +73,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         unsafeMetadata: { locality, isContractor: userType === "contractor" },
       });
 
+      if (attempt.status === "missing_requirements" && attempt.unverifiedFields?.includes("email_address")) {
+        setMessage("Check your inbox for the verification code, then sign in.", "success");
+        return;
+      }
+
       if (attempt.status !== "complete") {
-        setMessage("Check your inbox to verify your email, then sign in.", "success");
+        setMessage("Could not finish sign-up. Check the fields and try again.", "error");
         return;
       }
 
@@ -82,7 +87,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       setMessage("Account created", "success");
       setTimeout(() => go(userType === "contractor" ? "contractor" : "home"), 500);
     } catch (err) {
-      setMessage(err?.errors?.[0]?.longMessage || err?.message || "Could not create the account", "error");
+      const detail = err?.errors?.[0];
+
+      if (detail?.code?.includes("captcha")) {
+        setMessage("Bot check failed. Reload the page and try again.", "error");
+      } else {
+        setMessage(detail?.longMessage || detail?.message || err?.message || "Could not create the account", "error");
+      }
     } finally {
       submit.disabled = false;
       delete submit.dataset.busy;

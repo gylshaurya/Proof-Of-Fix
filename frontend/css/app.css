@@ -461,3 +461,30 @@
   .verdict-row { grid-template-columns: 1fr; }
   .job-actions .btn { flex: 1 1 auto; }
 }
+
+.fatal {
+  max-width: 620px;
+  margin: 64px auto;
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.fatal h2 { font-size: 19px; font-weight: 700; margin-bottom: 12px; }
+
+.fatal-detail {
+  padding: 13px 15px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  color: var(--bad);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 18px;
+}
+
+.fatal-actions { display: flex; gap: 10px; flex-wrap: wrap; }

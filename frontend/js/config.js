@@ -4,9 +4,9 @@ export const DATABASE_URL = "postgresql://authenticated@ep-muddy-dream-azv15q0i-
 
 export const BLOB_UPLOAD_ENDPOINT = "/api/upload";
 
-export const VOTING_ADDRESS = "0x7bF485f40de66c9a891bf38246981cb4dFB136ee";
-export const TREASURY_ADDRESS = "0xF8924422c65342c7541e8A767D4E6926473E92AF";
-export const DEPLOY_BLOCK = 10133869;
+export const VOTING_ADDRESS = "0x5b73c5498c1e3b4dba84de0f1833c4a029d90519";
+export const TREASURY_ADDRESS = "0x7fa9385be102ac3eac297483dd6233d62b3e1496";
+export const DEPLOY_BLOCK = 0;
 
 export const INR_PER_ETH = 200000;
 

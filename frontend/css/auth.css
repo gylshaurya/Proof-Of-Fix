@@ -151,3 +151,9 @@ body.auth {
 @media (max-width: 560px) {
   .radio-set { grid-template-columns: 1fr; }
 }
+
+.captcha-slot:not(:empty) {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}

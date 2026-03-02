@@ -35,8 +35,18 @@ export async function currentUser() {
 
 export async function authToken() {
   const instance = await clerk();
-  if (!instance.session) return null;
-  return instance.session.getToken();
+
+  if (!instance.session) {
+    throw new Error("No active Clerk session — the database rejects requests without a token");
+  }
+
+  const token = await instance.session.getToken();
+
+  if (!token) {
+    throw new Error("Clerk returned an empty token. Check the JWT template / Neon RLS setup.");
+  }
+
+  return token;
 }
 
 export async function signOut() {

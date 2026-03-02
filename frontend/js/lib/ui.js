@@ -89,3 +89,25 @@ export function emptyState(title, detail) {
     detail ? h("p", { class: "empty-detail" }, detail) : null
   );
 }
+
+export function fatalError(title, detail, { onSignOut } = {}) {
+  const main = document.querySelector("main") || document.body;
+
+  const card = h(
+    "div",
+    { class: "fatal" },
+    h("h2", null, title),
+    detail ? h("pre", { class: "fatal-detail" }, detail) : null,
+    h(
+      "div",
+      { class: "fatal-actions" },
+      h("button", { class: "btn", onClick: () => window.location.reload() }, "Retry"),
+      onSignOut
+        ? h("button", { class: "btn btn-ghost", onClick: onSignOut }, "Sign out")
+        : null
+    )
+  );
+
+  main.replaceChildren(card);
+  return card;
+}
