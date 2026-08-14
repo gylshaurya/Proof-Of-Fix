@@ -4,6 +4,15 @@ let clerkPromise = null;
 
 function loadClerkScript() {
   return new Promise((resolve, reject) => {
+    if (window.location.protocol === "file:") {
+      reject(
+        new Error(
+          "Opened as a file:// URL. Clerk cannot keep a session here — serve the folder over http, e.g. python3 -m http.server 8000"
+        )
+      );
+      return;
+    }
+
     if (window.Clerk) return resolve(window.Clerk);
 
     const script = document.createElement("script");
