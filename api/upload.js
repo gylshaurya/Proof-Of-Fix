@@ -4,51 +4,84 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-const jwks = createRemoteJWKSet(new URL(`${process.env.CLERK_ISSUER}/.well-known/jwks.json`));
+let jwks = null;
 
-export const config = { runtime: "edge" };
+function keySet() {
+  if (!jwks) {
+    if (!process.env.CLERK_ISSUER) {
+      throw new Error("CLERK_ISSUER is not set on this deployment");
+    }
+    jwks = createRemoteJWKSet(new URL(`${process.env.CLERK_ISSUER}/.well-known/jwks.json`));
+  }
+  return jwks;
+}
 
-export default async function handler(request) {
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+async function readBody(req) {
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BYTES) throw new Error("too large");
+    chunks.push(chunk);
   }
 
-  const header = request.headers.get("authorization") || "";
+  return Buffer.concat(chunks);
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).send("Method not allowed");
+    return;
+  }
+
+  const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
   if (!token) {
-    return new Response("Missing token", { status: 401 });
+    res.status(401).send("Missing token");
+    return;
   }
 
   let claims;
   try {
-    ({ payload: claims } = await jwtVerify(token, jwks, { issuer: process.env.CLERK_ISSUER }));
-  } catch {
-    return new Response("Invalid token", { status: 401 });
+    ({ payload: claims } = await jwtVerify(token, keySet(), { issuer: process.env.CLERK_ISSUER }));
+  } catch (err) {
+    res.status(401).send("Invalid token");
+    return;
   }
 
-  const contentType = request.headers.get("content-type") || "";
+  const contentType = req.headers["content-type"] || "";
   if (!ALLOWED.has(contentType)) {
-    return new Response("Unsupported image type", { status: 415 });
+    res.status(415).send("Unsupported image type");
+    return;
   }
 
-  const size = Number(request.headers.get("content-length") || 0);
-  if (size > MAX_BYTES) {
-    return new Response("Image must be under 5 MB", { status: 413 });
+  const requested = new URL(req.url, "http://localhost").searchParams.get("path") || "";
+  if (!requested.startsWith(`problems/${claims.sub}/`)) {
+    res.status(403).send("Path does not belong to you");
+    return;
   }
 
-  const requested = new URL(request.url).searchParams.get("path") || "";
-  const expectedPrefix = `problems/${claims.sub}/`;
-
-  if (!requested.startsWith(expectedPrefix)) {
-    return new Response("Path does not belong to you", { status: 403 });
+  let body;
+  try {
+    body = await readBody(req);
+  } catch {
+    res.status(413).send("Image must be under 5 MB");
+    return;
   }
 
-  const blob = await put(requested, request.body, {
+  const blob = await put(requested, body, {
     access: "public",
     contentType,
     addRandomSuffix: true,
   });
 
-  return Response.json({ url: blob.url });
+  res.status(200).json({ url: blob.url });
 }
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};

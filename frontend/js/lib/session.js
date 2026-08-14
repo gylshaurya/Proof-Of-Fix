@@ -12,15 +12,85 @@ const PAGES = {
   problem: "problem.html",
 };
 
+const BOUNCE_KEY = "pof-redirects";
+const BOUNCE_LIMIT = 3;
+const BOUNCE_WINDOW = 6000;
+
+function recordBounce(target) {
+  let history = [];
+  try {
+    history = JSON.parse(sessionStorage.getItem(BOUNCE_KEY) || "[]");
+  } catch {
+    history = [];
+  }
+
+  const now = Date.now();
+  history = history.filter((entry) => now - entry.at < BOUNCE_WINDOW);
+  history.push({ to: target, at: now });
+
+  try {
+    sessionStorage.setItem(BOUNCE_KEY, JSON.stringify(history));
+  } catch {
+    /* private mode, guard simply does not apply */
+  }
+
+  return history.length;
+}
+
+export function clearBounces() {
+  try {
+    sessionStorage.removeItem(BOUNCE_KEY);
+  } catch {
+    /* nothing to clear */
+  }
+}
+
 export function go(page, query) {
   const target = PAGES[page] || page;
   window.location.href = query ? `${target}?${new URLSearchParams(query)}` : target;
 }
 
+export function redirect(page) {
+  const target = PAGES[page] || page;
+
+  if (recordBounce(target) > BOUNCE_LIMIT) {
+    clearBounces();
+    reportRedirectLoop(target);
+    return;
+  }
+
+  window.location.href = target;
+}
+
+async function reportRedirectLoop(target) {
+  const { fatalError } = await import("./ui.js");
+  let state = "could not read Clerk state";
+
+  try {
+    const instance = await clerk();
+    state = [
+      `clerk.loaded    ${instance.loaded}`,
+      `clerk.user      ${instance.user ? instance.user.id : "null"}`,
+      `clerk.session   ${instance.session ? instance.session.status : "null"}`,
+      `page            ${window.location.pathname.split("/").pop()}`,
+      `wanted to go to ${target}`,
+    ].join("\n");
+  } catch (err) {
+    state = err.message;
+  }
+
+  fatalError("Stopped a redirect loop", state, {
+    onSignOut: async () => {
+      await signOut();
+      window.location.href = "index.html";
+    },
+  });
+}
+
 export async function requireUser() {
   const user = await currentUser();
   if (!user) {
-    go("login");
+    redirect("login");
     return null;
   }
   return user;
@@ -81,15 +151,16 @@ export async function requireProfile(role) {
   }
 
   if (role === "admin" && !profile.is_admin) {
-    go("home");
+    redirect("home");
     return null;
   }
 
   if (role === "contractor" && !profile.is_contractor) {
-    go("home");
+    redirect("home");
     return null;
   }
 
+  clearBounces();
   return { user, profile };
 }
 

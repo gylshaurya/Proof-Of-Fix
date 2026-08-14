@@ -28,9 +28,29 @@ export function clerk() {
   return clerkPromise;
 }
 
+const SETTLE_MS = 2000;
+
 export async function currentUser() {
   const instance = await clerk();
-  return instance.user ?? null;
+  if (instance.user) return instance.user;
+
+  return new Promise((resolve) => {
+    let done = false;
+
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      unsubscribe?.();
+      resolve(value ?? null);
+    };
+
+    const timer = setTimeout(() => finish(instance.user), SETTLE_MS);
+
+    const unsubscribe = instance.addListener?.((payload) => {
+      if (payload?.user) finish(payload.user);
+    });
+  });
 }
 
 export async function authToken() {

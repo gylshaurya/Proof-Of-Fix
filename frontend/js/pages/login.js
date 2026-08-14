@@ -1,5 +1,5 @@
 import { clerk } from "../lib/auth.js";
-import { loadProfile, go, homeFor } from "../lib/session.js";
+import { loadProfile, redirect, homeFor, clearBounces } from "../lib/session.js";
 import { initTheme } from "../lib/theme.js";
 
 initTheme();
@@ -18,9 +18,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (instance.user) {
     const profile = await loadProfile(instance.user.id).catch(() => null);
-    go(homeFor(profile));
+    redirect(homeFor(profile));
     return;
   }
+
+  clearBounces();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -47,8 +49,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await instance.setActive({ session: attempt.createdSessionId });
 
+      clearBounces();
       const profile = await loadProfile(instance.user?.id).catch(() => null);
-      go(homeFor(profile));
+      redirect(homeFor(profile));
     } catch (err) {
       setMessage(err?.errors?.[0]?.longMessage || err?.message || "Could not sign in", "error");
     } finally {
