@@ -1,42 +1,48 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap");
-
 :root {
-  --bg: #08090a;
-  --bg-sunken: #050506;
-  --surface: #0e1013;
-  --surface-raised: #16191d;
-  --surface-hover: #1c2025;
+  --bg: #ffffff;
+  --bg-sunken: #eeece7;
+  --surface: #ffffff;
+  --surface-raised: #f7f6f3;
+  --surface-hover: #eeece7;
 
-  --line: #22262c;
-  --line-strong: #2e333a;
+  --line: #e5e7eb;
+  --line-strong: #d9d9dd;
 
-  --text: #f2f4f7;
-  --text-soft: #9ba3ae;
-  --text-muted: #828890;
+  --text: #212121;
+  --text-soft: #616161;
+  --text-muted: #75758a;
 
-  --accent: #22d3ee;
-  --accent-hot: #38bdf8;
-  --accent-ink: #04252b;
-  --accent-wash: rgba(34, 211, 238, 0.12);
-  --accent-line: rgba(34, 211, 238, 0.32);
+  --accent: #003c33;
+  --accent-hot: #002f28;
+  --accent-ink: #ffffff;
+  --accent-wash: #edfce9;
+  --accent-line: rgba(0, 60, 51, 0.24);
 
-  --ok: #34d399;
-  --ok-wash: rgba(52, 211, 153, 0.12);
-  --warn: #fbbf24;
-  --warn-wash: rgba(251, 191, 36, 0.12);
-  --bad: #f87171;
-  --bad-wash: rgba(248, 113, 113, 0.12);
-  --info: #a78bfa;
-  --info-wash: rgba(167, 139, 250, 0.12);
+  --stage-bg: #003c33;
+  --stage-fg: #ffffff;
+  --stage-soft: rgba(255, 255, 255, 0.72);
+
+  --ok: #067a55;
+  --ok-wash: rgba(6, 122, 85, 0.1);
+  --ok-line: rgba(6, 122, 85, 0.3);
+  --warn: #a16207;
+  --warn-wash: rgba(161, 98, 7, 0.1);
+  --warn-line: rgba(161, 98, 7, 0.3);
+  --bad: #c0392f;
+  --bad-wash: rgba(192, 57, 47, 0.1);
+  --bad-line: rgba(192, 57, 47, 0.3);
+  --info: #6d43d4;
+  --info-wash: rgba(109, 67, 212, 0.1);
+  --info-line: rgba(109, 67, 212, 0.3);
 
   --r-sm: 8px;
   --r: 12px;
   --r-lg: 18px;
   --r-xl: 26px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(11, 17, 22, 0.06);
+  --shadow: 0 4px 16px rgba(11, 17, 22, 0.08), 0 1px 2px rgba(11, 17, 22, 0.04);
+  --shadow-lg: 0 24px 60px rgba(11, 17, 22, 0.12), 0 2px 8px rgba(11, 17, 22, 0.06);
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
@@ -45,45 +51,55 @@
   --slow: 520ms;
 
   --shell: 1200px;
-  --gutter: clamp(20px, 5vw, 48px);
-
-  color-scheme: dark;
-}
-
-:root[data-theme="light"] {
-  --bg: #ffffff;
-  --bg-sunken: #f4f6f8;
-  --surface: #ffffff;
-  --surface-raised: #f7f9fb;
-  --surface-hover: #eef2f6;
-
-  --line: #e3e8ee;
-  --line-strong: #cfd7e0;
-
-  --text: #0b1116;
-  --text-soft: #56616e;
-  --text-muted: #7c8794;
-
-  --accent: #0891b2;
-  --accent-hot: #0369a1;
-  --accent-ink: #ffffff;
-  --accent-wash: rgba(8, 145, 178, 0.1);
-  --accent-line: rgba(8, 145, 178, 0.28);
-
-  --ok: #067a55;
-  --ok-wash: rgba(6, 122, 85, 0.1);
-  --warn: #a16207;
-  --warn-wash: rgba(161, 98, 7, 0.1);
-  --bad: #c0392f;
-  --bad-wash: rgba(192, 57, 47, 0.1);
-  --info: #6d43d4;
-  --info-wash: rgba(109, 67, 212, 0.1);
-
-  --shadow-sm: 0 1px 2px rgba(11, 17, 22, 0.06);
-  --shadow: 0 4px 16px rgba(11, 17, 22, 0.08), 0 1px 2px rgba(11, 17, 22, 0.04);
-  --shadow-lg: 0 24px 60px rgba(11, 17, 22, 0.12), 0 2px 8px rgba(11, 17, 22, 0.06);
+  --gutter: clamp(16px, 5vw, 48px);
 
   color-scheme: light;
+}
+
+/* Dark theme: warm green-black neutrals with a sage accent, so it reads as the
+   same product as the light theme instead of a separate cyan skin. */
+:root[data-theme="dark"] {
+  --bg: #0c0f0e;
+  --bg-sunken: #080a09;
+  --surface: #111514;
+  --surface-raised: #171c1a;
+  --surface-hover: #1e2421;
+
+  --line: #232a27;
+  --line-strong: #303834;
+
+  --text: #eef2ef;
+  --text-soft: #a3ada8;
+  --text-muted: #85908a;
+
+  --accent: #7fd1a8;
+  --accent-hot: #95dcb8;
+  --accent-ink: #062a1f;
+  --accent-wash: rgba(127, 209, 168, 0.11);
+  --accent-line: rgba(127, 209, 168, 0.3);
+
+  --stage-bg: #12382d;
+  --stage-fg: #f1f7f3;
+  --stage-soft: rgba(241, 247, 243, 0.7);
+
+  --ok: #5cc98f;
+  --ok-wash: rgba(92, 201, 143, 0.12);
+  --ok-line: rgba(92, 201, 143, 0.3);
+  --warn: #e5b450;
+  --warn-wash: rgba(229, 180, 80, 0.12);
+  --warn-line: rgba(229, 180, 80, 0.3);
+  --bad: #f07a6f;
+  --bad-wash: rgba(240, 122, 111, 0.12);
+  --bad-line: rgba(240, 122, 111, 0.3);
+  --info: #b49cf0;
+  --info-wash: rgba(180, 156, 240, 0.12);
+  --info-line: rgba(180, 156, 240, 0.3);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
 }
 
 *,
@@ -94,9 +110,12 @@
   padding: 0;
 }
 
+[hidden] { display: none !important; }
+
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  background: var(--bg);
 }
 
 body {
@@ -148,10 +167,8 @@ legend { padding: 0; }
 }
 
 .brand-mark {
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  background: linear-gradient(140deg, var(--accent), var(--info));
+  width: 26px;
+  height: 26px;
   flex: none;
 }
 
@@ -238,6 +255,10 @@ code, .mono, .addr {
   --btn-line: var(--line);
 }
 
+.btn-primary { --btn-bg: var(--accent); --btn-fg: var(--accent-ink); }
+.btn-secondary { --btn-bg: transparent; --btn-fg: var(--text); --btn-line: var(--line-strong); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-hover); filter: none; }
+
 .btn-danger { --btn-bg: var(--bad); --btn-fg: #240b0a; }
 .btn-block { width: 100%; }
 
@@ -303,10 +324,10 @@ code, .mono, .addr {
 
 .status-0 { background: var(--surface-raised); color: var(--text-soft); border-color: var(--line); }
 .status-1 { background: var(--accent-wash); color: var(--accent); border-color: var(--accent-line); }
-.status-2 { background: var(--warn-wash); color: var(--warn); border-color: rgba(251, 191, 36, 0.3); }
-.status-3 { background: var(--info-wash); color: var(--info); border-color: rgba(167, 139, 250, 0.3); }
-.status-4 { background: var(--ok-wash); color: var(--ok); border-color: rgba(52, 211, 153, 0.3); }
-.status-5 { background: var(--bad-wash); color: var(--bad); border-color: rgba(248, 113, 113, 0.3); }
+.status-2 { background: var(--warn-wash); color: var(--warn); border-color: var(--warn-line); }
+.status-3 { background: var(--info-wash); color: var(--info); border-color: var(--info-line); }
+.status-4 { background: var(--ok-wash); color: var(--ok); border-color: var(--ok-line); }
+.status-5 { background: var(--bad-wash); color: var(--bad); border-color: var(--bad-line); }
 
 .chip {
   display: inline-flex;
@@ -369,8 +390,8 @@ textarea.field { resize: vertical; min-height: 88px; line-height: 1.55; }
 
 .notice a { color: var(--accent); font-weight: 600; }
 .notice-info { background: var(--accent-wash); border-color: var(--accent-line); color: var(--text); }
-.notice-warn { background: var(--warn-wash); border-color: rgba(251, 191, 36, 0.3); color: var(--text); }
-.notice-bad { background: var(--bad-wash); border-color: rgba(248, 113, 113, 0.3); color: var(--text); }
+.notice-warn { background: var(--warn-wash); border-color: var(--warn-line); color: var(--text); }
+.notice-bad { background: var(--bad-wash); border-color: var(--bad-line); color: var(--text); }
 
 .toast-stack {
   position: fixed;
@@ -417,6 +438,7 @@ textarea.field { resize: vertical; min-height: 88px; line-height: 1.55; }
 .toast-info::before { background: var(--accent); }
 
 dialog {
+  margin: auto;
   padding: 0;
   border: 0;
   background: transparent;
@@ -531,6 +553,19 @@ dialog[open] > * {
 
 .reveal.seen { opacity: 1; transform: none; }
 
+/* Page boot: content stays soft-blurred until the session and first data
+   have loaded, then sharpens in. Removed by JS (with a timeout fallback). */
+main {
+  transition: filter 360ms var(--ease), opacity 360ms var(--ease);
+}
+
+.booting main {
+  filter: blur(6px);
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -544,7 +579,7 @@ dialog[open] > * {
 
 @media (max-width: 720px) {
   .toast-stack { right: 12px; left: 12px; bottom: 12px; max-width: none; }
-  .sheet { width: 100%; border-radius: var(--r-xl) var(--r-xl) 0 0; padding: 22px; }
+  .sheet { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); border-radius: var(--r-lg); padding: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -555,4 +590,5 @@ dialog[open] > * {
     transition-duration: 0.01ms !important;
   }
   .rise, .reveal { opacity: 1; transform: none; }
+  .booting main { filter: none; }
 }

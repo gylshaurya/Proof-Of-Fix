@@ -1,8 +1,8 @@
 import { clerk, currentUser, signOut, userName } from "./auth.js";
-import { one } from "./db.js";
+import { insertOne, selectOne } from "./db.js";
 import { fatalError } from "./ui.js";
 
-const PAGES = {
+export const PAGES = {
   landing: "index.html",
   login: "login.html",
   signup: "signup.html",
@@ -12,36 +12,23 @@ const PAGES = {
   problem: "problem.html",
 };
 
-const BOUNCE_KEY = "pof-redirects";
-const BOUNCE_LIMIT = 3;
-const BOUNCE_WINDOW = 6000;
+// A tiny hint so the public landing page can offer "Open dashboard" instead of
+// "Sign in" without loading Clerk. Clerk stays the source of truth.
+const SESSION_HINT = "pof-session";
 
-function recordBounce(target) {
-  let history = [];
+function rememberSession(profile) {
   try {
-    history = JSON.parse(sessionStorage.getItem(BOUNCE_KEY) || "[]");
+    localStorage.setItem(SESSION_HINT, PAGES[homeFor(profile)]);
   } catch {
-    history = [];
+    /* storage blocked */
   }
-
-  const now = Date.now();
-  history = history.filter((entry) => now - entry.at < BOUNCE_WINDOW);
-  history.push({ to: target, at: now });
-
-  try {
-    sessionStorage.setItem(BOUNCE_KEY, JSON.stringify(history));
-  } catch {
-    /* private mode, guard simply does not apply */
-  }
-
-  return history.length;
 }
 
-export function clearBounces() {
+export function forgetSession() {
   try {
-    sessionStorage.removeItem(BOUNCE_KEY);
+    localStorage.removeItem(SESSION_HINT);
   } catch {
-    /* nothing to clear */
+    /* storage blocked */
   }
 }
 
@@ -52,44 +39,13 @@ export function go(page, query) {
 
 export function redirect(page) {
   const target = PAGES[page] || page;
-
-  if (recordBounce(target) > BOUNCE_LIMIT) {
-    clearBounces();
-    reportRedirectLoop(target);
-    return;
-  }
-
-  window.location.href = target;
-}
-
-async function reportRedirectLoop(target) {
-  const { fatalError } = await import("./ui.js");
-  let state = "could not read Clerk state";
-
-  try {
-    const instance = await clerk();
-    state = [
-      `clerk.loaded    ${instance.loaded}`,
-      `clerk.user      ${instance.user ? instance.user.id : "null"}`,
-      `clerk.session   ${instance.session ? instance.session.status : "null"}`,
-      `page            ${window.location.pathname.split("/").pop()}`,
-      `wanted to go to ${target}`,
-    ].join("\n");
-  } catch (err) {
-    state = err.message;
-  }
-
-  fatalError("Stopped a redirect loop", state, {
-    onSignOut: async () => {
-      await signOut();
-      window.location.href = "index.html";
-    },
-  });
+  window.location.replace(target);
 }
 
 export async function requireUser() {
   const user = await currentUser();
   if (!user) {
+    forgetSession();
     redirect("login");
     return null;
   }
@@ -97,11 +53,10 @@ export async function requireUser() {
 }
 
 export async function loadProfile(userId) {
-  return one`
-    select id, full_name, locality, wallet, is_contractor, is_admin
-    from profiles
-    where id = ${userId}
-  `;
+  return selectOne("profiles", {
+    columns: "id,full_name,locality,wallet,is_contractor,is_admin",
+    filters: { id: userId },
+  });
 }
 
 export async function ensureProfile(user) {
@@ -110,18 +65,17 @@ export async function ensureProfile(user) {
 
   const meta = user.unsafeMetadata ?? {};
 
-  return one`
-    insert into profiles (id, full_name, locality, is_contractor, is_admin)
-    values (
-      ${user.id},
-      ${userName(user)},
-      ${meta.locality ?? null},
-      ${meta.isContractor === true},
-      false
-    )
-    on conflict (id) do update set full_name = excluded.full_name
-    returning id, full_name, locality, wallet, is_contractor, is_admin
-  `;
+  return insertOne(
+    "profiles",
+    {
+      id: user.id,
+      full_name: userName(user),
+      locality: meta.locality ?? null,
+      is_contractor: false,
+      is_admin: false,
+    },
+    { columns: "id,full_name,locality,wallet,is_contractor,is_admin" }
+  );
 }
 
 export async function requireProfile(role) {
@@ -136,7 +90,7 @@ export async function requireProfile(role) {
     fatalError(
       "Signed in, but the database refused the request",
       err.message,
-      { onSignOut: async () => { await signOut(); go("landing"); } }
+      { onSignOut: () => logout() }
     );
     return null;
   }
@@ -145,7 +99,7 @@ export async function requireProfile(role) {
     fatalError(
       "Your profile row could not be created",
       "The insert returned nothing. Check the profiles insert policy in neon/schema.sql.",
-      { onSignOut: async () => { await signOut(); go("landing"); } }
+      { onSignOut: () => logout() }
     );
     return null;
   }
@@ -160,19 +114,21 @@ export async function requireProfile(role) {
     return null;
   }
 
-  clearBounces();
+  rememberSession(profile);
   return { user, profile };
+}
+
+export async function logout(button) {
+  if (button) button.disabled = true;
+  forgetSession();
+  await signOut();
+  go("landing");
 }
 
 export function bindLogout(node) {
   const button = typeof node === "string" ? document.querySelector(node) : node;
   if (!button) return;
-
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    await signOut();
-    go("landing");
-  });
+  button.addEventListener("click", () => logout(button));
 }
 
 export function homeFor(profile) {

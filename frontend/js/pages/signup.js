@@ -46,9 +46,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const locality = document.getElementById("locality").value;
-    const userType = form.querySelector("input[name=user_type]:checked")?.value;
 
-    if (!fullName || !email || !password || !locality || !userType) {
+    if (!fullName || !email || !password || !locality) {
       setMessage("All fields are required", "error");
       return;
     }
@@ -70,7 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         password,
         firstName,
         lastName: rest.join(" ") || undefined,
-        unsafeMetadata: { locality, isContractor: userType === "contractor" },
+        unsafeMetadata: { locality },
       });
 
       if (attempt.status === "missing_requirements" && attempt.unverifiedFields?.includes("email_address")) {
@@ -85,7 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await instance.setActive({ session: attempt.createdSessionId });
       setMessage("Account created", "success");
-      setTimeout(() => go(userType === "contractor" ? "contractor" : "home"), 500);
+      setTimeout(() => go("home"), 300);
     } catch (err) {
       const detail = err?.errors?.[0];
 

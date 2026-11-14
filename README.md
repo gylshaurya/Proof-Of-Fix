@@ -147,9 +147,9 @@ to the deploying address. If you use a hardware wallet, swap `--account` for `--
 
 ## Database
 
-Neon Postgres holds everything that does not need to be on chain, and Clerk handles auth. There
-is still no backend: the browser talks to Postgres directly over HTTP, and **Neon RLS** enforces
-authorisation inside the database using the Clerk JWT.
+Neon Postgres holds everything that does not need to be on chain, and Clerk handles auth. The
+browser uses Neon's Data API, while **Neon RLS** enforces authorisation inside the database using
+the Clerk JWT.
 
 `neon/schema.sql` is the whole setup — run it against a fresh Neon project with the
 **`neondb_owner`** connection string. It creates the `authenticated` and `anonymous` roles itself
@@ -163,8 +163,8 @@ if the Neon console has not already made them, so the order of setup steps does 
 How the authorisation actually works:
 
 1. Clerk issues a JWT for the signed-in user.
-2. The Neon serverless driver sends that JWT with every query.
-3. `pg_session_jwt` verifies it against Clerk's JWKS and exposes `auth.user_id()` in SQL.
+2. The frontend sends that JWT to the Neon Data API with every request.
+3. Neon verifies it against Clerk's JWKS and exposes `auth.user_id()` in SQL.
 4. RLS policies and guard triggers decide what that user may read and write.
 
 ### Why the keys sit in `config.js` and not `.env`
@@ -179,9 +179,8 @@ Two values ship to the browser, and both are designed for it:
 - **`CLERK_PUBLISHABLE_KEY`** (`pk_...`) identifies your Clerk instance and grants nothing. Clerk
   puts it in a `<script>` tag on every site that uses them. The **secret** key (`sk_...`) is a
   different value and never touches the frontend.
-- **`DATABASE_URL`** uses Neon's **passwordless `authenticated` role** — there is no credential in
-  the string. Without a valid Clerk JWT, `auth.user_id()` is null and every RLS policy denies the
-  query. It is an address, not a key.
+- **`DATA_API_URL`** is the public HTTP endpoint Neon provides for browser access. Without a valid
+  Clerk JWT, RLS denies the request. It is an address, not a password or database connection string.
 
 The values that *are* secret stay in `.env` and never reach the browser: `DATABASE_OWNER_URL`
 (full privileges), `BLOB_READ_WRITE_TOKEN`, `ETHERSCAN_API_KEY`, and the deploy key, which lives
@@ -260,8 +259,25 @@ npm run make-admin                    # lists every account with its id
 npm run make-admin -- "Your Name"     # promotes that one
 ```
 
-Fill in `CLERK_PUBLISHABLE_KEY` and `DATABASE_URL` (the `authenticated` role string) in
-`frontend/js/config.js`, and point your Clerk instance at Neon RLS as its JWT provider.
+Sign out and back in (or open `/admin`) to land on the ward office. On-chain actions there need
+MetaMask on the `GOVERNMENT_ADDRESS` wallet, since it owns both contracts.
+
+### Contractors
+
+A contractor is a normal account with `is_contractor` set:
+
+1. They sign up like a resident.
+2. The ward office opens **Ward office → Contractors** and clicks **Make contractor**
+   (or run `npm run make-contractor -- "Name"`).
+3. They sign in, open **Your jobs**, and connect their wallet from the top bar.
+4. When an issue wins a round, its card in the ward office shows a contractor dropdown (contractors
+   with a linked wallet, same sector first). **Assign & fund escrow** calls
+   `Voting.assignContractor`, then `Treasury.createEscrow`, which sends the 50% advance.
+5. The job appears on the contractor's page, matched by wallet. They post updates and mark it
+   done, which opens the resident completion vote.
+
+Fill in `CLERK_PUBLISHABLE_KEY` and `DATA_API_URL` in `frontend/js/config.js`, then add Clerk as an
+authentication provider in the Neon Data API settings.
 
 You need MetaMask on Sepolia and some test ETH. The app checks the network and offers to switch
 if you are on the wrong one.

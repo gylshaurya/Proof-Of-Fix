@@ -1,58 +1,41 @@
-import { requireProfile, bindLogout, go } from "../lib/session.js";
-import { sql } from "../lib/db.js";
+import { requireProfile, go } from "../lib/session.js";
+import { select } from "../lib/db.js";
 import { h, fill, setText } from "../lib/dom.js";
-import { readableError, skeleton, emptyState } from "../lib/ui.js";
+import { readableError, skeleton, emptyState, pageReady } from "../lib/ui.js";
 import { rupees, relativeTime } from "../lib/format.js";
-import { mountWalletCard } from "../lib/wallet.js";
+import { mountAppBar } from "../lib/appbar.js";
+import { loadChain } from "../lib/chain.js";
 import { STATUS, STATUS_LABEL } from "../config.js";
 import { mountReportDialog } from "./report.js";
-import { initTheme, bindThemeToggle } from "../lib/theme.js";
+import { initTheme } from "../lib/theme.js";
 
 const PLACEHOLDER =
   "data:image/svg+xml;charset=UTF-8," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="225" fill="#16191d"/><text x="50%" y="50%" text-anchor="middle" dy=".35em" fill="#828890" font-family="sans-serif" font-size="14">No photo</text></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="225" fill="#eeece7"/><text x="50%" y="50%" text-anchor="middle" dy=".35em" fill="#75758a" font-family="sans-serif" font-size="14">No photo</text></svg>`
   );
 
 const ACTIVE = [STATUS.VOTING, STATUS.UNDER_PROGRESS, STATUS.COMPLETION_VOTING];
 
 initTheme();
+loadChain().catch(() => {});
+
+let profile;
+let rows = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
   const context = await requireProfile();
   if (!context) return;
 
-  const { profile } = context;
-  const name = profile.full_name || "Resident";
+  profile = context.profile;
+  setText("#sectorName", profile.locality || "your sector");
 
-  fill(
-    document.getElementById("user-info"),
-    h("div", { class: "avatar", "aria-hidden": "true" }, name.trim().charAt(0).toUpperCase()),
-    h(
-      "div",
-      null,
-      h("p", { class: "identity-name" }, name),
-      h(
-        "div",
-        { class: "identity-meta" },
-        h("span", { class: "chip" }, profile.locality || "No sector set"),
-        h("span", { class: "chip" }, profile.is_contractor ? "Contractor" : "Resident")
-      )
-    )
-  );
-
-  bindThemeToggle();
-  bindLogout("#logout");
-
-  mountWalletCard(document.getElementById("wallet-card"), {
-    userId: profile.id,
-    wallet: profile.wallet,
+  mountAppBar(profile, {
+    onWalletChange: () => {
+      loadCredits();
+      loadChainStats();
+    },
   });
-
-  const contractorBtn = document.getElementById("contractor-btn");
-  if (contractorBtn && profile.is_contractor) contractorBtn.hidden = false;
-
-  const reload = () => loadProblems(profile.locality);
 
   const reportBtn = document.getElementById("report-btn");
   if (profile.locality) {
@@ -60,39 +43,58 @@ document.addEventListener("DOMContentLoaded", async () => {
       trigger: reportBtn,
       locality: profile.locality,
       userId: profile.id,
-      onCreated: reload,
+      onCreated: loadProblems,
     });
   } else {
     reportBtn.disabled = true;
     reportBtn.title = "Set your sector before reporting an issue";
   }
 
-  await reload();
+  pageReady();
+  loadCredits();
+  await loadProblems();
 });
 
-async function loadProblems(locality) {
-  const container = document.getElementById("cards-container");
-  fill(container, skeleton(3, 300));
-
-  if (!locality) {
-    fill(container, emptyState("No sector set", "Pick a sector in your profile to see local issues."));
+async function loadCredits() {
+  if (!profile.wallet) {
+    setText("#dashboardCredits", "-");
+    document.getElementById("creditChip").title = "Connect a wallet to see your voting credits";
     return;
   }
 
-  let rows;
   try {
-    rows = await sql`
-      select id, title, description, image_url, status_code, cost, vote_count, is_demo, created_at
-      from problems
-      where locality = ${locality.trim()}
-      order by status_code asc, created_at desc
-    `;
+    const { contractsReady, readVotingContract } = await loadChain();
+    if (!contractsReady()) return;
+    const credits = await readVotingContract().creditsOf(profile.wallet);
+    setText("#dashboardCredits", credits.toString());
+    document.getElementById("creditChip").title = "Voting credits left this round";
+  } catch (err) {
+    console.warn(err);
+  }
+}
+
+async function loadProblems() {
+  const container = document.getElementById("cards-container");
+  fill(container, skeleton(3, 300));
+
+  if (!profile.locality) {
+    fill(container, emptyState("No sector set", "Your account has no sector yet, so there is nothing local to show."));
+    return;
+  }
+
+  try {
+    rows = await select("problems", {
+      columns: "id,title,description,image_url,status_code,cost,vote_count,is_demo,created_at",
+      filters: { locality: profile.locality.trim() },
+      order: "status_code.asc,created_at.desc",
+    });
   } catch (err) {
     fill(container, emptyState("Could not load issues", readableError(err)));
     return;
   }
 
   if (!rows.length) {
+    setText("#active-count", "0");
     fill(container, emptyState("Nothing reported yet", "Be the first to report an issue in your area."));
     return;
   }
@@ -102,10 +104,49 @@ async function loadProblems(locality) {
 
   setText("#active-count", String(active.length));
   fill(container, [...active, ...rest].map(card));
+
+  loadChainStats();
+}
+
+// Live vote numbers for issues that are open for voting. Runs after the cards
+// are on screen, so a slow RPC never delays the page.
+async function loadChainStats() {
+  const voting = rows.filter((p) => p.status_code === STATUS.VOTING);
+  if (!voting.length) return;
+
+  try {
+    const { contractsReady, readVotingContract, toChainId } = await loadChain();
+    if (!contractsReady()) return;
+    const contract = readVotingContract();
+
+    await Promise.all(
+      voting.map(async (problem) => {
+        const id = toChainId(problem.id);
+        const [total, mine] = await Promise.all([
+          contract.getTotalVotes(id),
+          profile.wallet ? contract.getUserVotes(profile.wallet, id) : null,
+        ]);
+
+        const slot = document.querySelector(`[data-votes-for="${problem.id}"]`);
+        if (!slot) return;
+
+        const totalVotes = Number(total);
+        const myVotes = mine === null ? 0 : Number(mine);
+        fill(
+          slot,
+          h("span", null, `${totalVotes} ${totalVotes === 1 ? "vote" : "votes"}`),
+          myVotes > 0 ? h("span", { class: "my-votes-pill" }, `You: ${myVotes}`) : null
+        );
+      })
+    );
+  } catch (err) {
+    console.warn("Could not read live votes", err);
+  }
 }
 
 function card(problem) {
   const status = STATUS_LABEL[problem.status_code] ?? "Unknown";
+  const open = () => go("problem", { problemId: problem.id });
 
   return h(
     "article",
@@ -113,11 +154,11 @@ function card(problem) {
       class: "issue-card",
       tabindex: "0",
       role: "link",
-      onClick: () => go("problem", { problemId: problem.id }),
+      onClick: open,
       onKeydown: (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          go("problem", { problemId: problem.id });
+          open();
         }
       },
     },
@@ -128,6 +169,7 @@ function card(problem) {
         src: problem.image_url || PLACEHOLDER,
         alt: "",
         loading: "lazy",
+        decoding: "async",
         onError: (event) => {
           event.currentTarget.src = PLACEHOLDER;
         },
@@ -144,7 +186,11 @@ function card(problem) {
         "div",
         { class: "issue-foot" },
         problem.cost ? h("span", { class: "issue-cost" }, rupees(problem.cost)) : null,
-        problem.vote_count ? h("span", null, `${problem.vote_count} votes`) : null,
+        h(
+          "span",
+          { class: "issue-votes", dataset: { votesFor: problem.id } },
+          problem.vote_count ? `${problem.vote_count} votes` : null
+        ),
         h("span", { class: "issue-time" }, relativeTime(problem.created_at))
       )
     )

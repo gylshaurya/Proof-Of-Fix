@@ -9,6 +9,16 @@ export function hasWallet() {
   return Boolean(window.ethereum);
 }
 
+export function contractsReady() {
+  return ethers.utils.isAddress(VOTING_ADDRESS) && ethers.utils.isAddress(TREASURY_ADDRESS);
+}
+
+function requireContracts() {
+  if (!contractsReady()) {
+    throw new Error("The Sepolia contracts have not been deployed yet");
+  }
+}
+
 function requireWallet() {
   if (!hasWallet()) {
     throw new Error("MetaMask is not installed. Install it to continue.");
@@ -16,7 +26,6 @@ function requireWallet() {
 }
 
 export function readProvider() {
-  if (hasWallet()) return new ethers.providers.Web3Provider(window.ethereum, "any");
   return new ethers.providers.JsonRpcProvider(CHAIN.rpcUrls[0], CHAIN.id);
 }
 
@@ -72,18 +81,22 @@ async function signer() {
 }
 
 export async function getVotingContract() {
+  requireContracts();
   return new ethers.Contract(VOTING_ADDRESS, VotingABI, await signer());
 }
 
 export async function getTreasuryContract() {
+  requireContracts();
   return new ethers.Contract(TREASURY_ADDRESS, TreasuryABI, await signer());
 }
 
 export function readVotingContract() {
+  requireContracts();
   return new ethers.Contract(VOTING_ADDRESS, VotingABI, readProvider());
 }
 
 export function readTreasuryContract() {
+  requireContracts();
   return new ethers.Contract(TREASURY_ADDRESS, TreasuryABI, readProvider());
 }
 

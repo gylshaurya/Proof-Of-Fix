@@ -26,7 +26,7 @@ body.auth {
 }
 
 .auth-panel h1 {
-  font-size: clamp(26px, 3.4vw, 34px);
+  font-size: clamp(32px, 3.4vw, 40px);
   font-weight: 800;
   letter-spacing: -0.035em;
   margin-bottom: 10px;
@@ -82,7 +82,7 @@ body.auth {
 .auth-alt a:hover { text-decoration: underline; }
 
 .auth-aside {
-  background: var(--bg-sunken);
+  background: var(--surface-raised);
   border-left: 1px solid var(--line);
   display: grid;
   align-content: center;
@@ -112,35 +112,7 @@ body.auth {
 .auth-points svg { margin-top: 3px; color: var(--accent); }
 
 .auth-aside { position: relative; overflow: hidden; }
-
-.auth-aside .glow {
-  width: 620px;
-  height: 620px;
-  top: -10%;
-  right: -220px;
-  opacity: 0.75;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.34), transparent 66%);
-  animation: drift-auth 24s ease-in-out infinite alternate;
-}
-
-.auth-aside::after {
-  content: "";
-  position: absolute;
-  width: 520px;
-  height: 520px;
-  left: -180px;
-  bottom: -220px;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.5;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.3), transparent 68%);
-  pointer-events: none;
-}
-
-@keyframes drift-auth {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(-40px, 34px, 0) scale(1.14); }
-}
+.auth-aside .glow { display: none; }
 
 @media (max-width: 900px) {
   body.auth { grid-template-columns: 1fr; }

@@ -90,7 +90,13 @@ export function emptyState(title, detail) {
   );
 }
 
+// Removes the boot blur once a page has its session and first data.
+export function pageReady() {
+  document.documentElement.classList.remove("booting");
+}
+
 export function fatalError(title, detail, { onSignOut } = {}) {
+  pageReady();
   const main = document.querySelector("main") || document.body;
 
   const card = h(

@@ -1,81 +1,46 @@
 # Design
 
-Recorded from the built interface, not from intention. `frontend/css/ui.css` is the source of
-truth; this file explains it.
-
-## World
-
-Deep charcoal ground, a single cyan accent, soft radial glows and hairline-bordered raised
-surfaces. Chosen by the user as the standing canon exit from a concept-led direction, calibrated
-against safe.global as the pinned reference. No thematic or conceptual layer — this reads as a
-modern product, and future work should not reopen that with a concept round.
-
-The one idea the surface owns: **money that provably cannot move** is demonstrated in the first
-viewport (a real escrow split with a locked half and a live vote), never claimed in a headline.
+Proof of Fix uses a restrained civic product interface built around white editorial space, deep green action surfaces, warm stone panels, and precise information hierarchy. The interface should feel calm and operational. It explains the state of public work without presenting every piece of information as a card.
 
 ## Colour
 
-Semantic colour is not decoration here — it *is* the problem lifecycle, and the same six values
-carry status from the landing page through every dashboard.
+- `#ffffff` is the default canvas.
+- `#212121` is the primary text colour.
+- `#003c33` is the main action colour and the dark lifecycle surface.
+- `#eeece7` is the warm secondary surface for grouped information.
+- `#e5e7eb` and `#d9d9dd` are the standard rules and borders.
+- Green, amber, violet, and red are reserved for lifecycle and result states.
 
-| Token | Dark | Light | Meaning |
-| --- | --- | --- | --- |
-| `--accent` | `#22d3ee` | `#0891b2` | Primary action, and status 1 (Voting) |
-| `--warn` | `#fbbf24` | `#a16207` | Status 2 (Under progress), deadlines |
-| `--info` | `#a78bfa` | `#6d43d4` | Status 3 (Completion voting) |
-| `--ok` | `#34d399` | `#067a55` | Status 4 (Completed), released funds |
-| `--bad` | `#f87171` | `#c0392f` | Status 5 (Failed), rejections |
-| `--text-muted` | `#828890` | `#7c8794` | Secondary text — AA-verified on every ground |
-
-Strategy is **restrained**: neutrals plus one accent. Dark is the default because the reference
-is dark; light is a designed peer, not an afterthought, and both are verified.
-
-Grounds step `--bg` → `--surface` → `--surface-raised` → `--surface-hover`. Borders are always
-`--line`, escalating to `--line-strong` on hover or for emphasis.
+Dark mode is supported as an alternative. Light mode is the default. Dark mode uses green-black neutrals (`#0c0f0e` canvas, `#111514` surfaces) with a sage accent `#7fd1a8` and a `#12382d` lifecycle surface, so it reads as the same product rather than a separate cyan theme. The theme is set by an inline script in each page's `<head>` before CSS paints.
 
 ## Type
 
-Archivo for everything, JetBrains Mono for anything on-chain (addresses, hashes, ETH amounts,
-contract names). Mono is a signal that a value came from the chain rather than the database.
+Archivo is used for product and interface text. JetBrains Mono is reserved for values that come from the chain, including addresses, hashes, issue fingerprints, and ETH amounts. Rupee amounts and ordinary database values remain in the interface typeface.
 
-Scale, deliberately snapped to distinct steps: 12 · 13 · 14 · 15 · 17 · 20 · 24, then fluid
-`clamp()` for display sizes. Headings run 700–800 weight at `-0.03em` to `-0.042em` tracking;
-body sits at 15px/1.6.
+Hierarchy comes from size, spacing, and surface contrast rather than heavy weights. Large display type is reserved for landing pages. Operational pages use compact headings and readable 14px to 16px body text.
 
-## Motion
+## Layout
 
-`--fast` 140ms for state, `--mid` 260ms for surfaces, `--slow` 520ms for entrances, all on
-`cubic-bezier(0.22, 1, 0.36, 1)`.
+Use open space and horizontal rules before adding another container. Major summaries may use a 12px to 16px radius. Small controls may use pills. Avoid nested cards, decorative shadows, and broad warning boxes.
 
-- `.rise` with `.rise-1…6` staggers the first viewport on load.
-- `.reveal` + IntersectionObserver brings sections in on scroll, capped at a 280ms stagger.
-- Bars and tallies animate `transform: scaleX()`, never `width` — no layout thrash.
-- Everything collapses under `prefers-reduced-motion: reduce`.
+The issue page has three layers:
 
-## Components
+1. The report and its current lifecycle state.
+2. The single action relevant to that state.
+3. Supporting funding, voting, and chain evidence.
 
-`ui.css` carries the system: `.btn` (+ `-ghost`, `-quiet`, `-danger`, `-lg`, `-sm`, `-block`),
-`.card`, `.badge` + `.status-0…5`, `.chip`, `.field`, `.label`, `.notice`, `.toast`, `.sheet`,
-`.skeleton`, `.empty`, `.tx-list`, `.glow`.
+On mobile, the supporting column follows the action and all controls remain at least 44px high.
 
-`app.css` composes them into the app shell: `.app-bar`, `.page`, `.metrics`/`.metric`,
-`.identity`, `.issue-card`, `.detail` two-column with a sticky aside, `.panel`, `.stat-rows`.
+## Interaction
 
-`landing.css` and `auth.css` are surface-specific and own nothing reusable.
+- MetaMask prompts appear only beside an action that requires signing.
+- Reading reports and public chain history never requires MetaMask.
+- Pending actions say what the wallet is waiting for.
+- Confirmed transactions become a compact receipt with a Sepolia Etherscan link.
+- Voting credits remain visible near the resident identity and inside the active voting context.
+- Controls that do not apply to the current lifecycle stage are not rendered.
+- Focus, disabled, loading, empty, error, and success states must remain visually distinct.
 
-## Rules that are easy to break
+## Product language
 
-- Buttons need `text-decoration: none` — they are often `<a>`.
-- Anything on-chain is mono; anything in rupees is not.
-- Amounts show in rupees for residents and ETH wherever a wallet is involved. Never substitute
-  one for the other silently.
-- Demo content carries a visible "not a real municipal record" label.
-- A pending transaction must show all three states: about to happen, happening, happened + tx link.
-
-## Known detector findings, accepted
-
-`radial-spotlight-glow`, `gpt-thin-border-wide-shadow` and `dark-glow` are the pinned reference
-aesthetic and are kept deliberately. `repeating-stripes-gradient` is the hatching on locked
-escrow funds — semantic, not decorative. `flat-type-hierarchy` and `cramped-padding` are
-heuristics tuned for marketing pages; the app UI legitimately needs adjacent 13/14/15 steps, and
-horizontal padding comes from `.shell` rather than the section.
+Use direct labels that explain what a value refers to. Say `Sepolia issue fingerprint`, `Voting credits`, `Estimated repair cost`, and `Completion vote` instead of generic technical labels. Do not use promotional claims, emojis, em dashes, or unexplained blockchain terminology.

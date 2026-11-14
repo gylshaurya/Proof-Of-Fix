@@ -4,21 +4,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your jobs — Proof of Fix</title>
+  <title>Your jobs | Proof of Fix</title>
+  <script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem("pof-theme-v2")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("booting");setTimeout(function(){d.classList.remove("booting")},8000);})();</script>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://many-whippet-98.clerk.accounts.dev" crossorigin />
+  <link rel="preload" as="script" crossorigin="anonymous" href="https://many-whippet-98.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js" />
+  <link rel="preconnect" href="https://ep-muddy-dream-azv15q0i.apirest.c-3.ap-southeast-1.aws.neon.tech" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
   <link rel="stylesheet" href="../css/ui.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js" />
+  <link rel="modulepreload" href="../js/blockchain.js" />
+  <link rel="modulepreload" href="../js/config.js" />
+  <link rel="modulepreload" href="../js/abis/VotingABI.js" />
+  <link rel="modulepreload" href="../js/abis/TreasuryABI.js" />
+  <link rel="modulepreload" href="../js/lib/session.js" />
+  <link rel="modulepreload" href="../js/lib/auth.js" />
+  <link rel="modulepreload" href="../js/lib/db.js" />
+  <link rel="modulepreload" href="../js/lib/ui.js" />
+  <link rel="modulepreload" href="../js/lib/dom.js" />
+  <link rel="modulepreload" href="../js/lib/format.js" />
+  <link rel="modulepreload" href="../js/lib/appbar.js" />
+  <link rel="modulepreload" href="../js/lib/theme.js" />
+  <link rel="modulepreload" href="../js/lib/wallet.js" />
+  <link rel="modulepreload" href="../js/lib/chain.js" />
 </head>
 
 <body>
   <header class="app-bar">
     <div class="shell app-bar-inner">
-      <a class="brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true"></span>
-        Proof of Fix
+      <a class="brand" href="home.html" data-home-link>
+        <img class="brand-mark" src="../assets/logo.svg" alt="" width="26" height="26" />
+        <span class="brand-name">Proof of Fix</span>
       </a>
       <nav class="app-nav" aria-label="Main">
-        <a href="home.html" id="homeBtn">Issues</a>
-        <a href="contractor.html" aria-current="page">Contractor</a>
+        <a href="home.html">Issues</a>
+        <a href="contractor.html" data-role="contractor" aria-current="page" hidden>Your jobs</a>
+        <a href="admin.html" data-role="admin" hidden>Ward office</a>
       </nav>
       <div class="app-actions">
         <div id="wallet-card" class="wallet-card"></div>
@@ -29,7 +55,9 @@
             <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
           </svg>
         </button>
-        <button id="logoutBtn" class="btn btn-sm btn-ghost">Sign out</button>
+        <div class="profile" id="profile-menu">
+          <span class="avatar-btn avatar-placeholder" aria-hidden="true"></span>
+        </div>
       </div>
     </div>
   </header>
@@ -38,14 +66,14 @@
     <div class="page-head">
       <div>
         <h1>Your jobs</h1>
-        <p>Work funded to your wallet in <span id="localityBadge">your sector</span>.</p>
+        <p>Work the ward office has funded to your linked wallet.</p>
       </div>
     </div>
 
     <section class="metrics">
       <div class="metric metric-accent">
         <span class="metric-label">Wallet balance</span>
-        <span class="metric-value" id="balance">—</span>
+        <span class="metric-value" id="balance">-</span>
       </div>
       <div class="metric">
         <span class="metric-label">Assigned</span>

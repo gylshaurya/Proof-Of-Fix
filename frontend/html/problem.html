@@ -4,22 +4,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Issue — Proof of Fix</title>
+  <title>Issue | Proof of Fix</title>
+  <script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem("pof-theme-v2")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("booting");setTimeout(function(){d.classList.remove("booting")},8000);})();</script>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://many-whippet-98.clerk.accounts.dev" crossorigin />
+  <link rel="preload" as="script" crossorigin="anonymous" href="https://many-whippet-98.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js" />
+  <link rel="preconnect" href="https://ep-muddy-dream-azv15q0i.apirest.c-3.ap-southeast-1.aws.neon.tech" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
   <link rel="stylesheet" href="../css/ui.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js" />
+  <link rel="modulepreload" href="../js/blockchain.js" />
+  <link rel="modulepreload" href="../js/abis/VotingABI.js" />
+  <link rel="modulepreload" href="../js/abis/TreasuryABI.js" />
+  <link rel="modulepreload" href="../js/lib/session.js" />
+  <link rel="modulepreload" href="../js/lib/auth.js" />
+  <link rel="modulepreload" href="../js/config.js" />
+  <link rel="modulepreload" href="../js/lib/db.js" />
+  <link rel="modulepreload" href="../js/lib/ui.js" />
+  <link rel="modulepreload" href="../js/lib/dom.js" />
+  <link rel="modulepreload" href="../js/lib/format.js" />
+  <link rel="modulepreload" href="../js/lib/theme.js" />
+  <link rel="modulepreload" href="../js/lib/appbar.js" />
+  <link rel="modulepreload" href="../js/lib/wallet.js" />
+  <link rel="modulepreload" href="../js/lib/chain.js" />
 </head>
 
 <body>
   <header class="app-bar">
     <div class="shell app-bar-inner">
-      <a class="brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true"></span>
-        Proof of Fix
+      <a class="brand" href="home.html" data-home-link>
+        <img class="brand-mark" src="../assets/logo.svg" alt="" width="26" height="26" />
+        <span class="brand-name">Proof of Fix</span>
       </a>
       <nav class="app-nav" aria-label="Main">
         <a href="home.html">Issues</a>
+        <a href="contractor.html" data-role="contractor" hidden>Your jobs</a>
+        <a href="admin.html" data-role="admin" hidden>Ward office</a>
       </nav>
       <div class="app-actions">
+        <div id="wallet-card" class="wallet-card"></div>
         <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
             stroke-linecap="round" aria-hidden="true">
@@ -27,16 +55,20 @@
             <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
           </svg>
         </button>
-        <button id="logoutBtn" class="btn btn-sm btn-ghost">Sign out</button>
+        <div class="profile" id="profile-menu">
+          <span class="avatar-btn avatar-placeholder" aria-hidden="true"></span>
+        </div>
       </div>
     </div>
   </header>
 
   <main class="shell page">
-    <a class="back-link" href="home.html">← All issues</a>
-
-    <div id="walletNotice" class="notice notice-warn" hidden>
-      MetaMask is required to vote and to read this issue's on-chain history.
+    <div class="detail-toolbar">
+      <a class="back-link" href="home.html" data-home-link>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+        All issues
+      </a>
     </div>
 
     <div class="detail">
@@ -57,32 +89,66 @@
           <p id="contractorRemark"></p>
         </section>
 
-        <section id="votingSection" class="panel" hidden>
+        <section class="stage-summary" aria-labelledby="stageTitle">
+          <div>
+            <h2 id="stageTitle">What happens next</h2>
+            <p id="stageDescription"></p>
+          </div>
+          <span id="stageAction" class="stage-action"></span>
+        </section>
+
+        <div id="txInfo" class="tx-receipt" role="status" hidden>
+          <span class="tx-receipt-mark" aria-hidden="true"></span>
+          <div>
+            <strong id="txTitle">Transaction confirmed</strong>
+            <a id="txLink" target="_blank" rel="noreferrer">View on Sepolia Etherscan</a>
+          </div>
+        </div>
+
+        <section id="votingSection" class="panel action-panel" hidden>
           <div>
             <h2 class="panel-title">Cast your vote</h2>
-            <p class="panel-hint">Votes cost the square of your running total. Three votes here costs nine credits.</p>
+            <p class="panel-hint">Votes cost the square of your running total on an issue. Going from 0 to 3 votes costs 9 credits.</p>
           </div>
-          <div class="vote-input-row">
-            <input class="field" type="number" id="voteInput" min="1" step="1" placeholder="Votes" />
+
+          <dl class="my-stake" id="myStake" hidden>
+            <div>
+              <dt>Your votes here</dt>
+              <dd id="myVotes">0</dd>
+            </div>
+            <div>
+              <dt>Credits left</dt>
+              <dd id="myCredits">0</dd>
+            </div>
+            <div>
+              <dt>Next vote costs</dt>
+              <dd id="nextVoteCost">1</dd>
+            </div>
+          </dl>
+
+          <div class="vote-input-row" id="voteControls">
+            <input class="field" type="number" id="voteInput" min="1" step="1" placeholder="Votes" inputmode="numeric" />
             <button id="voteBtn" class="btn">Submit vote</button>
           </div>
           <p id="voteCostPreview" class="cost-preview"></p>
+          <div id="walletNotice" class="wallet-prompt" hidden></div>
         </section>
 
-        <section id="completionVoting" class="panel" hidden>
+        <section id="completionVoting" class="panel action-panel" hidden>
           <div>
             <h2 class="panel-title">Was it actually fixed?</h2>
             <p class="panel-hint">Your verdict decides whether the locked half is released to the contractor or
               returned to the treasury.</p>
           </div>
-          <div class="verdict-row">
+          <div class="verdict-row" id="verdictControls">
             <button id="yesBtn" class="btn">Yes, it's fixed</button>
             <button id="noBtn" class="btn btn-danger">No, still broken</button>
           </div>
           <p id="completionCountdown" class="countdown" hidden></p>
+          <div id="completionWalletNotice" class="wallet-prompt" hidden></div>
         </section>
 
-        <p id="alreadyCompletionVotedMsg" class="notice notice-info" hidden></p>
+        <p id="completionNotice" class="my-verdict" hidden></p>
 
         <section id="completionStats" class="panel tally-panel" hidden>
           <h2 class="panel-title">Verification tally</h2>
@@ -95,30 +161,26 @@
 
         <section class="panel">
           <h2 class="panel-title">Vote history</h2>
-          <ul id="voteHistory" class="tx-list"></ul>
+          <ul id="voteHistory" class="tx-list"><li class="muted">Loading from Sepolia...</li></ul>
         </section>
 
         <section class="panel">
           <h2 class="panel-title">Treasury activity</h2>
-          <ul id="escrowTxList" class="tx-list"></ul>
+          <ul id="escrowTxList" class="tx-list"><li class="muted">Loading from Sepolia...</li></ul>
         </section>
       </div>
 
       <aside class="detail-side">
-        <div id="txInfo" class="notice notice-info" hidden>
-          Transaction submitted — <a id="txLink" target="_blank" rel="noreferrer"></a>
-        </div>
-
         <section class="panel">
           <h2 class="panel-title">Funding</h2>
           <dl class="stat-rows">
             <div class="stat-row">
-              <dt>Estimated cost</dt>
-              <dd id="cost">—</dd>
+              <dt>Estimated repair cost</dt>
+              <dd id="cost">-</dd>
             </div>
             <div class="stat-row" id="contractorRow" hidden>
               <dt>Contractor</dt>
-              <dd class="addr" id="contractorWallet">—</dd>
+              <dd class="addr"><a id="contractorWallet" target="_blank" rel="noreferrer">-</a></dd>
             </div>
           </dl>
         </section>
@@ -127,23 +189,24 @@
           <h2 class="panel-title">Voting</h2>
           <dl class="stat-rows">
             <div class="stat-row">
-              <dt>Total votes</dt>
-              <dd id="chainTotalVotes">0</dd>
+              <dt>All votes on this issue</dt>
+              <dd id="chainTotalVotes">-</dd>
             </div>
-            <div class="stat-row">
-              <dt>Your votes here</dt>
-              <dd id="myVotes">0</dd>
-            </div>
-            <div class="stat-row">
-              <dt>Credits left</dt>
-              <dd id="myCredits">0</dd>
+            <div class="stat-row" id="sideMyVotesRow" hidden>
+              <dt>Your votes</dt>
+              <dd id="sideMyVotes">0</dd>
             </div>
           </dl>
         </section>
 
         <section class="panel">
-          <h2 class="panel-title">On-chain ID</h2>
+          <h2 class="panel-title">Sepolia issue fingerprint</h2>
+          <p class="panel-hint">A fixed identifier derived from this report's database ID. The contracts use it to match votes and escrow activity to this issue.</p>
           <code id="chainProblemId" class="chain-id"></code>
+          <div class="contract-links">
+            <a id="votingContractLink" target="_blank" rel="noreferrer">Voting contract</a>
+            <a id="treasuryContractLink" target="_blank" rel="noreferrer">Treasury contract</a>
+          </div>
         </section>
       </aside>
     </div>

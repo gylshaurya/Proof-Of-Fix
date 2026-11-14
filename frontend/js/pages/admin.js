@@ -6,16 +6,20 @@ import {
   toChainId,
   inrToWei,
   hasWallet,
+  contractsReady,
 } from "../blockchain.js";
-import { requireProfile, bindLogout } from "../lib/session.js";
-import { sql } from "../lib/db.js";
+import { requireProfile } from "../lib/session.js";
+import { select, update } from "../lib/db.js";
 import { h, fill, setText, show } from "../lib/dom.js";
-import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
+import { toast, readableError, withBusy, confirmAction, skeleton, emptyState, pageReady } from "../lib/ui.js";
 import { rupees, shortAddress, ethAmount } from "../lib/format.js";
 import { STATUS, STATUS_LABEL, PHASE } from "../config.js";
-import { initTheme, bindThemeToggle } from "../lib/theme.js";
+import { initTheme } from "../lib/theme.js";
+import { mountAppBar } from "../lib/appbar.js";
 
 let voting;
+let chainActionsReady = false;
+let people = [];
 
 initTheme();
 
@@ -23,20 +27,154 @@ document.addEventListener("DOMContentLoaded", async () => {
   const context = await requireProfile("admin");
   if (!context) return;
 
-  bindLogout("#logoutBtn");
-  bindThemeToggle();
+  mountAppBar(context.profile);
+  bindTabs();
 
-  if (!hasWallet()) {
-    show(document.getElementById("walletNotice"), true);
+  if (!hasWallet() || !contractsReady()) {
+    const notice = document.getElementById("walletNotice");
+    notice.textContent = contractsReady()
+      ? "Connect the government wallet when you are ready to perform an on-chain action. Database review remains available."
+      : "Sepolia contracts are not configured. Database review remains available, but on-chain actions are disabled.";
+    show(notice, true);
+    document.getElementById("newRoundBtn").disabled = true;
   } else {
+    chainActionsReady = true;
     voting = readVotingContract();
     loadChainInfo();
   }
 
   document.getElementById("newRoundBtn")?.addEventListener("click", startNewRound);
 
+  pageReady();
+  await loadPeople();
   await loadProblems();
 });
+
+function bindTabs() {
+  const tabs = [...document.querySelectorAll(".admin-tab")];
+  tabs.forEach((tab) =>
+    tab.addEventListener("click", () => {
+      tabs.forEach((other) => {
+        const selected = other === tab;
+        other.setAttribute("aria-selected", String(selected));
+        document.getElementById(other.getAttribute("aria-controls")).hidden = !selected;
+      });
+    })
+  );
+}
+
+// Admins can read every profile (see neon/schema.sql), which is what lets the
+// ward office pick a contractor from a list instead of pasting an address.
+async function loadPeople() {
+  const container = document.getElementById("peopleContainer");
+  fill(container, skeleton(3, 64));
+
+  try {
+    people = await select("profiles", {
+      columns: "id,full_name,locality,wallet,is_contractor,is_admin",
+      order: "is_contractor.desc,full_name.asc",
+    });
+  } catch (err) {
+    fill(container, emptyState("Could not load accounts", readableError(err)));
+    return;
+  }
+
+  renderPeople();
+}
+
+function renderPeople() {
+  const container = document.getElementById("peopleContainer");
+  const others = people.filter((person) => !person.is_admin);
+
+  if (!others.length) {
+    fill(container, emptyState("No accounts yet", "People appear here after they sign up and open the app once."));
+    return;
+  }
+
+  fill(
+    container,
+    h(
+      "ul",
+      { class: "people-list" },
+      others.map((person) =>
+        h(
+          "li",
+          { class: "person-row" },
+          h(
+            "div",
+            { class: "person-main" },
+            h("strong", null, person.full_name || "Unnamed"),
+            h(
+              "span",
+              { class: "person-meta" },
+              person.locality || "No sector",
+              " · ",
+              person.wallet ? h("code", null, shortAddress(person.wallet)) : h("span", { class: "muted" }, "no wallet linked")
+            )
+          ),
+          person.is_contractor ? h("span", { class: "badge status-4" }, "Contractor") : null,
+          h(
+            "button",
+            {
+              class: `btn btn-sm ${person.is_contractor ? "btn-ghost" : "btn-quiet"}`,
+              onClick: (event) => toggleContractor(event, person),
+            },
+            person.is_contractor ? "Remove contractor" : "Make contractor"
+          )
+        )
+      )
+    )
+  );
+}
+
+async function toggleContractor(event, person) {
+  const next = !person.is_contractor;
+  await withBusy(event.currentTarget, "Saving...", async () => {
+    try {
+      await update("profiles", { is_contractor: next }, { id: person.id });
+      person.is_contractor = next;
+      toast(next ? `${person.full_name} is now a contractor` : `${person.full_name} is no longer a contractor`, "success");
+    } catch (err) {
+      toast(readableError(err), "error");
+    }
+  });
+  renderPeople();
+  await loadProblems();
+}
+
+function contractorPicker(problem) {
+  const contractors = people
+    .filter((person) => person.is_contractor && person.wallet)
+    .sort((a, b) => Number(b.locality === problem.locality) - Number(a.locality === problem.locality));
+
+  const dropdown = h(
+    "select",
+    { class: "field contractor-select", "aria-label": "Contractor" },
+    h("option", { value: "" }, contractors.length ? "Choose a contractor" : "No contractors with a wallet yet"),
+    contractors.map((person) =>
+      h("option", { value: person.wallet }, `${person.full_name} · ${person.locality || "any sector"} · ${shortAddress(person.wallet)}`)
+    ),
+    h("option", { value: "__manual" }, "Enter a wallet address...")
+  );
+
+  const manual = h("input", {
+    class: "field contractor-input",
+    type: "text",
+    placeholder: "0x contractor wallet",
+    spellcheck: "false",
+    hidden: true,
+  });
+
+  dropdown.addEventListener("change", () => {
+    manual.hidden = dropdown.value !== "__manual";
+    if (!manual.hidden) manual.focus();
+  });
+
+  return {
+    nodes: [dropdown, manual],
+    value: () => (dropdown.value === "__manual" ? manual.value : dropdown.value),
+  };
+}
 
 async function loadChainInfo() {
   try {
@@ -59,11 +197,11 @@ async function startNewRound(event) {
       const tx = await contract.newRound();
       await tx.wait();
 
-      await sql`
-        update problems
-        set status = ${STATUS_LABEL[STATUS.DRAFT]}, status_code = ${STATUS.DRAFT}, vote_count = 0
-        where status_code = ${STATUS.VOTING}
-      `;
+      await update(
+        "problems",
+        { status: STATUS_LABEL[STATUS.DRAFT], status_code: STATUS.DRAFT, vote_count: 0 },
+        { status_code: STATUS.VOTING }
+      );
 
       toast("New round started", "success");
       await loadChainInfo();
@@ -81,7 +219,7 @@ async function loadProblems() {
 
   let data;
   try {
-    data = await sql`select * from problems order by locality asc, status_code asc`;
+    data = await select("problems", { order: "locality.asc,status_code.asc" });
   } catch (err) {
     fill(container, emptyState("Could not load problems", readableError(err)));
     return;
@@ -101,38 +239,42 @@ async function loadProblems() {
 
   fill(
     container,
-    [...byLocality.entries()].map(([locality, problems]) =>
-      h(
+    [...byLocality.entries()].map(([locality, problems]) => {
+      const votingProblems = inVoting(problems);
+      const draftProblems = drafts(problems);
+
+      return h(
         "section",
         { class: "locality-group" },
         h(
           "header",
           { class: "locality-header" },
           h("h2", null, locality),
-          drafts(problems).length
+          !votingProblems.length && draftProblems.length
             ? h(
                 "button",
                 {
                   class: "btn btn-secondary",
-                  onClick: (event) => openVoting(event, locality, drafts(problems)),
+                  onClick: (event) => openVoting(event, locality, draftProblems),
                 },
-                `Open voting on ${drafts(problems).length} issue(s)`
+                `Open voting on ${draftProblems.length} issue(s)`
               )
             : null,
-          inVoting(problems).length
+          votingProblems.length
             ? h(
                 "button",
                 {
                   class: "btn btn-primary",
-                  onClick: (event) => closeVoting(event, locality, inVoting(problems)),
+                  disabled: !chainActionsReady,
+                  onClick: (event) => closeVoting(event, locality, votingProblems),
                 },
                 "Close voting & pick winner"
               )
             : null
         ),
         h("div", { class: "issue-grid" }, problems.map(problemCard))
-      )
-    )
+      );
+    })
   );
 }
 
@@ -143,22 +285,18 @@ function problemCard(problem) {
   const actions = [];
 
   if (problem.status_code === STATUS.UNDER_PROGRESS && !problem.contractor_wallet) {
-    const input = h("input", {
-      class: "field contractor-input",
-      type: "text",
-      placeholder: "0x contractor wallet",
-      spellcheck: "false",
-    });
+    const picker = contractorPicker(problem);
 
     actions.push(
       h(
         "div",
         { class: "escrow-form" },
-        input,
+        h("p", { class: "escrow-label" }, "Assign a contractor and fund the escrow"),
+        ...picker.nodes,
         h(
           "button",
-          { class: "btn btn-primary", onClick: (event) => createEscrow(event, problem, input.value) },
-          "Fund escrow"
+          { class: "btn btn-primary", disabled: !chainActionsReady, onClick: (event) => createEscrow(event, problem, picker.value()) },
+          "Assign & fund escrow"
         )
       )
     );
@@ -168,7 +306,7 @@ function problemCard(problem) {
     actions.push(
       h(
         "button",
-        { class: "btn btn-primary", onClick: (event) => settle(event, problem) },
+        { class: "btn btn-primary", disabled: !chainActionsReady, onClick: (event) => settle(event, problem) },
         "Close voting & settle"
       )
     );
@@ -201,11 +339,11 @@ function problemCard(problem) {
 async function openVoting(event, locality, problems) {
   await withBusy(event.currentTarget, "Opening...", async () => {
     try {
-      await sql`
-        update problems
-        set status = ${STATUS_LABEL[STATUS.VOTING]}, status_code = ${STATUS.VOTING}
-        where id = any(${problems.map((p) => p.id)})
-      `;
+      await update(
+        "problems",
+        { status: STATUS_LABEL[STATUS.VOTING], status_code: STATUS.VOTING },
+        { id: problems.map((problem) => problem.id) }
+      );
     } catch (err) {
       toast(readableError(err), "error");
       return;
@@ -219,7 +357,8 @@ async function openVoting(event, locality, problems) {
 async function closeVoting(event, locality, problems) {
   if (!problems.length) return;
 
-  await withBusy(event.currentTarget, "Reading votes...", async () => {
+  const button = event.currentTarget;
+  await withBusy(button, "Reading votes...", async () => {
     try {
       const tallies = await Promise.all(
         problems.map(async (problem) => ({
@@ -240,29 +379,31 @@ async function closeVoting(event, locality, problems) {
         return;
       }
 
-      event.currentTarget.textContent = "Confirm in wallet...";
+      button.textContent = "Confirm in wallet...";
 
       const contract = await getVotingContract();
       const tx = await contract.moveToUnderProgress(toChainId(winner.problem.id));
 
-      event.currentTarget.textContent = "Waiting for confirmation...";
+      button.textContent = "Waiting for confirmation...";
       await tx.wait();
 
-      await sql`
-        update problems
-        set status = ${STATUS_LABEL[STATUS.UNDER_PROGRESS]},
-            status_code = ${STATUS.UNDER_PROGRESS},
-            vote_count = ${winner.votes}
-        where id = ${winner.problem.id}
-      `;
+      await update(
+        "problems",
+        {
+          status: STATUS_LABEL[STATUS.UNDER_PROGRESS],
+          status_code: STATUS.UNDER_PROGRESS,
+          vote_count: winner.votes,
+        },
+        { id: winner.problem.id }
+      );
 
       const losers = tallies.slice(1).map((t) => t.problem.id);
       if (losers.length) {
-        await sql`
-          update problems
-          set status = ${STATUS_LABEL[STATUS.DRAFT]}, status_code = ${STATUS.DRAFT}
-          where id = any(${losers})
-        `;
+        await update(
+          "problems",
+          { status: STATUS_LABEL[STATUS.DRAFT], status_code: STATUS.DRAFT },
+          { id: losers }
+        );
       }
 
       toast(`${winner.problem.title} selected for funding`, "success");
@@ -275,7 +416,12 @@ async function closeVoting(event, locality, problems) {
 }
 
 async function createEscrow(event, problem, contractorAddress) {
-  const address = contractorAddress.trim();
+  const address = (contractorAddress || "").trim();
+
+  if (!address) {
+    toast("Choose a contractor first", "error");
+    return;
+  }
 
   if (!ethers.utils.isAddress(address)) {
     toast("Enter a valid wallet address", "error");
@@ -317,15 +463,17 @@ async function createEscrow(event, problem, contractorAddress) {
       await tx.wait();
 
       try {
-        await sql`
-          update problems
-          set assigned = true,
-              contractor_wallet = ${address},
-              escrow_wei = ${value.toString()},
-              advance_paid = ${problem.cost / 2},
-              escrow_tx = ${tx.hash}
-          where id = ${problem.id}
-        `;
+        await update(
+          "problems",
+          {
+            assigned: true,
+            contractor_wallet: address,
+            escrow_wei: value.toString(),
+            advance_paid: problem.cost / 2,
+            escrow_tx: tx.hash,
+          },
+          { id: problem.id }
+        );
       } catch (err) {
         toast("Escrow funded but the database did not update, refresh and check", "error");
         console.error(err);
@@ -364,13 +512,15 @@ async function settle(event, problem) {
       const finalizeTx = await treasury.finalize(chainId);
       await finalizeTx.wait();
 
-      await sql`
-        update problems
-        set status = ${approved ? STATUS_LABEL[STATUS.COMPLETED] : STATUS_LABEL[STATUS.FAILED]},
-            status_code = ${approved ? STATUS.COMPLETED : STATUS.FAILED},
-            settle_tx = ${finalizeTx.hash}
-        where id = ${problem.id}
-      `;
+      await update(
+        "problems",
+        {
+          status: approved ? STATUS_LABEL[STATUS.COMPLETED] : STATUS_LABEL[STATUS.FAILED],
+          status_code: approved ? STATUS.COMPLETED : STATUS.FAILED,
+          settle_tx: finalizeTx.hash,
+        },
+        { id: problem.id }
+      );
 
       toast(
         approved ? "Work approved, final payment released" : "Work rejected, funds returned to treasury",

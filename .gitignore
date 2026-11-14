@@ -18,3 +18,4 @@ yolov8n.pt
 all_civic_results.json
 civic_issues_formatted.json
 .vercel
+.env*

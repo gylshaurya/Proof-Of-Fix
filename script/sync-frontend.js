@@ -13,6 +13,12 @@ if (!fs.existsSync(runFile)) {
 const run = JSON.parse(fs.readFileSync(runFile, "utf8"));
 const deployed = {};
 
+if (!run.receipts?.length || !run.transactions?.every((tx) => tx.hash)) {
+  console.error("The latest run is a simulation, not a confirmed deployment");
+  console.error("Deploy with --broadcast, wait for receipts, then run this script again");
+  process.exit(1);
+}
+
 for (const tx of run.transactions) {
   if (tx.transactionType === "CREATE") deployed[tx.contractName] = tx.contractAddress;
 }
@@ -22,7 +28,27 @@ if (!deployed.Voting || !deployed.Treasury) {
   process.exit(1);
 }
 
-const block = Number(run.receipts?.[0]?.blockNumber ?? 0);
+const block = Number(run.receipts[0].blockNumber);
+
+if (!Number.isInteger(block) || block <= 0) {
+  console.error("The broadcast file does not contain a valid deployment block");
+  process.exit(1);
+}
+
+const rpcUrl = process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
+
+for (const [name, address] of Object.entries(deployed)) {
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: name, method: "eth_getCode", params: [address, "latest"] }),
+  });
+  const result = await response.json();
+  if (!response.ok || result.error || !result.result || result.result === "0x") {
+    console.error(`${name} has no bytecode at ${address}`);
+    process.exit(1);
+  }
+}
 
 const configPath = path.join("frontend", "js", "config.js");
 let config = fs.readFileSync(configPath, "utf8");

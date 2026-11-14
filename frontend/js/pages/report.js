@@ -1,4 +1,4 @@
-import { sql } from "../lib/db.js";
+import { insert } from "../lib/db.js";
 import { uploadPhoto } from "../lib/storage.js";
 import { h } from "../lib/dom.js";
 import { toast, readableError } from "../lib/ui.js";
@@ -82,10 +82,15 @@ export function mountReportDialog({ trigger, locality, userId, onCreated }) {
       let imageUrl = null;
       if (file) imageUrl = await uploadPhoto(file, userId);
 
-      await sql`
-        insert into problems (title, description, cost, locality, image_url, reported_by, status_code)
-        values (${title}, ${description}, ${cost}, ${locality}, ${imageUrl}, ${userId}, ${STATUS.DRAFT})
-      `;
+      await insert("problems", {
+        title,
+        description,
+        cost,
+        locality,
+        image_url: imageUrl,
+        reported_by: userId,
+        status_code: STATUS.DRAFT,
+      });
 
       dialog.close();
       toast("Issue reported, waiting for review", "success");

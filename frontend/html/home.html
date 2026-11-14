@@ -4,21 +4,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your sector — Proof of Fix</title>
+  <title>Your sector | Proof of Fix</title>
+  <script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem("pof-theme-v2")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("booting");setTimeout(function(){d.classList.remove("booting")},8000);})();</script>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://many-whippet-98.clerk.accounts.dev" crossorigin />
+  <link rel="preload" as="script" crossorigin="anonymous" href="https://many-whippet-98.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js" />
+  <link rel="preconnect" href="https://ep-muddy-dream-azv15q0i.apirest.c-3.ap-southeast-1.aws.neon.tech" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
   <link rel="stylesheet" href="../css/ui.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="modulepreload" href="../js/lib/session.js" />
+  <link rel="modulepreload" href="../js/lib/auth.js" />
+  <link rel="modulepreload" href="../js/config.js" />
+  <link rel="modulepreload" href="../js/lib/db.js" />
+  <link rel="modulepreload" href="../js/lib/ui.js" />
+  <link rel="modulepreload" href="../js/lib/dom.js" />
+  <link rel="modulepreload" href="../js/lib/format.js" />
+  <link rel="modulepreload" href="../js/lib/appbar.js" />
+  <link rel="modulepreload" href="../js/lib/theme.js" />
+  <link rel="modulepreload" href="../js/lib/wallet.js" />
+  <link rel="modulepreload" href="../js/lib/chain.js" />
+  <link rel="modulepreload" href="../js/pages/report.js" />
+  <link rel="modulepreload" href="../js/lib/storage.js" />
 </head>
 
 <body>
   <header class="app-bar">
     <div class="shell app-bar-inner">
-      <a class="brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true"></span>
-        Proof of Fix
+      <a class="brand" href="home.html" data-home-link>
+        <img class="brand-mark" src="../assets/logo.svg" alt="" width="26" height="26" />
+        <span class="brand-name">Proof of Fix</span>
       </a>
       <nav class="app-nav" aria-label="Main">
         <a href="home.html" aria-current="page">Issues</a>
-        <a href="contractor.html" id="contractor-btn" hidden>Contractor</a>
+        <a href="contractor.html" data-role="contractor" hidden>Your jobs</a>
+        <a href="admin.html" data-role="admin" hidden>Ward office</a>
       </nav>
       <div class="app-actions">
         <div id="wallet-card" class="wallet-card"></div>
@@ -29,7 +53,9 @@
             <path d="M12 2.4v2.2M12 19.4v2.2M4.2 12H2M22 12h-2.2M5.6 5.6 4 4M20 20l-1.6-1.6M18.4 5.6 20 4M4 20l1.6-1.6" />
           </svg>
         </button>
-        <button id="logout" class="btn btn-sm btn-ghost">Sign out</button>
+        <div class="profile" id="profile-menu">
+          <span class="avatar-btn avatar-placeholder" aria-hidden="true"></span>
+        </div>
       </div>
     </div>
   </header>
@@ -38,12 +64,16 @@
     <div class="page-head">
       <div>
         <h1>Your sector</h1>
-        <p>Everything reported nearby, and where each one stands.</p>
+        <p>Everything reported in <span id="sectorName">your sector</span>, and where each one stands.</p>
       </div>
-      <button id="report-btn" class="btn">Report an issue</button>
+      <div class="page-head-actions">
+        <div class="credit-chip" id="creditChip" title="Voting credits left this round">
+          <span class="credit-chip-label">Voting credits</span>
+          <strong id="dashboardCredits">-</strong>
+        </div>
+        <button id="report-btn" class="btn">Report an issue</button>
+      </div>
     </div>
-
-    <section class="identity" id="user-info"></section>
 
     <div class="section-head">
       <h2>Local issues</h2>

@@ -14,7 +14,6 @@ interface IVoting {
 }
 
 contract Treasury {
-
     struct Escrow {
         address contractor;
         uint256 total;
@@ -72,12 +71,7 @@ contract Treasury {
         emit GovernmentUpdated(_government);
     }
 
-    function createEscrow(bytes32 id, address contractor)
-        external
-        payable
-        onlyGov
-        nonReentrant
-    {
+    function createEscrow(bytes32 id, address contractor) external payable onlyGov nonReentrant {
         require(!escrows[id].exists, "escrow exists");
         require(contractor != address(0), "zero address");
         require(msg.value > 1 wei, "amount too small");
@@ -99,10 +93,7 @@ contract Treasury {
         require(!e.settled, "already settled");
 
         IVoting.Phase phase = voting.getPhase(id);
-        require(
-            phase == IVoting.Phase.Completed || phase == IVoting.Phase.Failed,
-            "not resolved"
-        );
+        require(phase == IVoting.Phase.Completed || phase == IVoting.Phase.Failed, "not resolved");
 
         uint256 remaining = e.total - e.released;
         e.released = e.total;
@@ -132,7 +123,7 @@ contract Treasury {
 
     function _send(address to, uint256 amount) private {
         if (amount == 0) return;
-        (bool ok, ) = payable(to).call{value: amount}("");
+        (bool ok,) = payable(to).call{value: amount}("");
         require(ok, "transfer failed");
     }
 }

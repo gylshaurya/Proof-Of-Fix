@@ -2,12 +2,20 @@ import { CLERK_PUBLISHABLE_KEY } from "../config.js";
 
 let clerkPromise = null;
 
+function frontendApiUrl() {
+  const encoded = CLERK_PUBLISHABLE_KEY.split("_").at(-1);
+  if (!encoded) throw new Error("The Clerk publishable key is invalid");
+
+  const padded = encoded.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+  return atob(padded).replace("$", "");
+}
+
 function loadClerkScript() {
   return new Promise((resolve, reject) => {
     if (window.location.protocol === "file:") {
       reject(
         new Error(
-          "Opened as a file:// URL. Clerk cannot keep a session here — serve the folder over http, e.g. python3 -m http.server 8000"
+          "Clerk cannot keep a session on a file URL. Serve the folder over HTTP, for example with python3 -m http.server 8000"
         )
       );
       return;
@@ -18,8 +26,7 @@ function loadClerkScript() {
     const script = document.createElement("script");
     script.async = true;
     script.crossOrigin = "anonymous";
-    script.src =
-      "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+    script.src = `https://${frontendApiUrl()}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`;
     script.dataset.clerkPublishableKey = CLERK_PUBLISHABLE_KEY;
     script.addEventListener("load", () => resolve(window.Clerk));
     script.addEventListener("error", () => reject(new Error("Could not load Clerk")));
@@ -37,36 +44,16 @@ export function clerk() {
   return clerkPromise;
 }
 
-const SETTLE_MS = 2000;
-
 export async function currentUser() {
   const instance = await clerk();
-  if (instance.user) return instance.user;
-
-  return new Promise((resolve) => {
-    let done = false;
-
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      unsubscribe?.();
-      resolve(value ?? null);
-    };
-
-    const timer = setTimeout(() => finish(instance.user), SETTLE_MS);
-
-    const unsubscribe = instance.addListener?.((payload) => {
-      if (payload?.user) finish(payload.user);
-    });
-  });
+  return instance.user ?? null;
 }
 
 export async function authToken() {
   const instance = await clerk();
 
   if (!instance.session) {
-    throw new Error("No active Clerk session — the database rejects requests without a token");
+    throw new Error("There is no active Clerk session. Sign in before loading database records.");
   }
 
   const token = await instance.session.getToken();

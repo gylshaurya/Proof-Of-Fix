@@ -6,14 +6,14 @@ import {
   txUrl,
   hasWallet,
 } from "../blockchain.js";
-import { requireProfile, bindLogout } from "../lib/session.js";
-import { sql } from "../lib/db.js";
+import { requireProfile } from "../lib/session.js";
+import { select, update } from "../lib/db.js";
 import { h, fill, setText, show } from "../lib/dom.js";
-import { toast, readableError, withBusy, confirmAction, skeleton, emptyState } from "../lib/ui.js";
+import { toast, readableError, withBusy, confirmAction, skeleton, emptyState, pageReady } from "../lib/ui.js";
 import { rupees, ethAmount } from "../lib/format.js";
-import { mountWalletCard } from "../lib/wallet.js";
+import { mountAppBar } from "../lib/appbar.js";
 import { STATUS, STATUS_LABEL } from "../config.js";
-import { initTheme, bindThemeToggle } from "../lib/theme.js";
+import { initTheme } from "../lib/theme.js";
 
 let profile;
 
@@ -25,21 +25,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   profile = context.profile;
 
-  setText("#localityBadge", profile.locality || "No locality");
-  bindLogout("#logoutBtn");
-  bindThemeToggle();
-
-  mountWalletCard(
-    document.getElementById("wallet-card"),
-    { userId: profile.id, wallet: profile.wallet },
-    (address) => {
-      profile.wallet = address;
+  mountAppBar(profile, {
+    onWalletChange: () => {
       refreshBalance();
       loadProblems();
-    }
-  );
+    },
+  });
 
-  await refreshBalance();
+  pageReady();
+  refreshBalance();
   await loadProblems();
 });
 
@@ -48,11 +42,6 @@ async function refreshBalance() {
 
   if (!profile.wallet) {
     setText(target, "Not linked");
-    return;
-  }
-
-  if (!hasWallet()) {
-    setText(target, "-");
     return;
   }
 
@@ -72,7 +61,7 @@ async function loadProblems() {
   if (!profile.wallet) {
     fill(
       container,
-      emptyState("Link your wallet to see assigned work", "Jobs are matched to your wallet address.")
+      emptyState("Connect your wallet to see assigned work", "Use the Connect wallet button in the top bar. Jobs are matched to your wallet address.")
     );
     setText("#statTotal", "0");
     setText("#statProgress", "0");
@@ -82,11 +71,10 @@ async function loadProblems() {
 
   let data;
   try {
-    data = await sql`
-      select * from problems
-      where lower(contractor_wallet) = lower(${profile.wallet})
-      order by status_code asc
-    `;
+    data = await select("problems", {
+      filters: { contractor_wallet: { operator: "ilike", value: profile.wallet } },
+      order: "status_code.asc",
+    });
   } catch (err) {
     fill(container, emptyState("Could not load your jobs", readableError(err)));
     return;
@@ -102,7 +90,13 @@ async function loadProblems() {
   setText("#statCompleted", String(completed.length));
 
   if (!data.length) {
-    fill(container, emptyState("No jobs assigned yet", "Funded work in your locality will show up here."));
+    fill(
+      container,
+      emptyState(
+        "No jobs assigned yet",
+        "When the ward office funds an issue and picks you as the contractor, it will appear here and the advance lands in your wallet."
+      )
+    );
     return;
   }
 
@@ -110,30 +104,37 @@ async function loadProblems() {
 }
 
 function jobCard(problem) {
-  const remark = h("textarea", {
-    class: "field",
-    rows: "3",
-    maxlength: "400",
-    placeholder: "Add a work update residents can read...",
-  });
-  remark.value = problem.remark || "";
+  const editable = problem.status_code === STATUS.UNDER_PROGRESS;
+  const remark = editable
+    ? h("textarea", {
+        class: "field",
+        rows: "3",
+        maxlength: "400",
+        placeholder: "Add a work update residents can read...",
+      })
+    : null;
+  if (remark) remark.value = problem.remark || "";
 
-  const actions = [
-    h(
-      "button",
-      { class: "btn btn-ghost", onClick: (event) => saveRemark(event, problem.id, remark.value) },
-      "Save update"
-    ),
-  ];
+  const actions = [];
 
-  if (problem.status_code === STATUS.UNDER_PROGRESS) {
+  if (editable) {
     actions.push(
       h(
         "button",
-        { class: "btn btn-primary", onClick: (event) => markComplete(event, problem) },
+        { class: "btn btn-ghost", onClick: (event) => saveRemark(event, problem.id, remark.value) },
+        "Save update"
+      )
+    );
+    actions.push(
+      h(
+        "button",
+        { class: "btn btn-primary", disabled: !hasWallet(), onClick: (event) => markComplete(event, problem) },
         "Mark work completed"
       )
     );
+    if (!hasWallet()) {
+      actions.push(h("span", { class: "action-note" }, "MetaMask is needed when you submit the completed work."));
+    }
   }
 
   if (problem.status_code === STATUS.COMPLETION_VOTING) {
@@ -152,6 +153,9 @@ function jobCard(problem) {
       problem.advance_paid ? h("span", null, `Advance ${rupees(problem.advance_paid)}`) : null
     ),
     problem.description ? h("p", { class: "card-desc" }, problem.description) : null,
+    !editable && problem.remark
+      ? h("div", { class: "job-update" }, h("strong", null, "Latest work update"), h("p", null, problem.remark))
+      : null,
     problem.escrow_tx
       ? h(
           "a",
@@ -160,7 +164,7 @@ function jobCard(problem) {
         )
       : null,
     remark,
-    h("div", { class: "job-actions" }, ...actions)
+    actions.length ? h("div", { class: "job-actions" }, ...actions) : null
   );
 }
 
@@ -174,7 +178,7 @@ async function saveRemark(event, id, remark) {
 
   await withBusy(event.currentTarget, "Saving...", async () => {
     try {
-      await sql`update problems set remark = ${value} where id = ${id}`;
+      await update("problems", { remark: value }, { id });
       toast("Update saved", "success");
     } catch (err) {
       toast(readableError(err), "error");
@@ -185,20 +189,23 @@ async function saveRemark(event, id, remark) {
 async function markComplete(event, problem) {
   if (!confirmAction("Mark this work as completed? Residents will vote to verify it.")) return;
 
-  await withBusy(event.currentTarget, "Confirm in wallet...", async () => {
+  const button = event.currentTarget;
+  await withBusy(button, "Confirm in wallet...", async () => {
     try {
       const contract = await getVotingContract();
       const tx = await contract.startCompletionVoting(toChainId(problem.id));
 
-      event.currentTarget.textContent = "Waiting for confirmation...";
+      button.textContent = "Waiting for confirmation...";
       await tx.wait();
 
-      await sql`
-        update problems
-        set status = ${STATUS_LABEL[STATUS.COMPLETION_VOTING]},
-            status_code = ${STATUS.COMPLETION_VOTING}
-        where id = ${problem.id}
-      `;
+      await update(
+        "problems",
+        {
+          status: STATUS_LABEL[STATUS.COMPLETION_VOTING],
+          status_code: STATUS.COMPLETION_VOTING,
+        },
+        { id: problem.id }
+      );
 
       toast("Residents can now verify your work", "success");
       await loadProblems();

@@ -1,5 +1,5 @@
 import { clerk } from "../lib/auth.js";
-import { loadProfile, redirect, homeFor, clearBounces } from "../lib/session.js";
+import { ensureProfile, redirect, homeFor } from "../lib/session.js";
 import { initTheme } from "../lib/theme.js";
 
 initTheme();
@@ -17,12 +17,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const instance = await clerk();
 
   if (instance.user) {
-    const profile = await loadProfile(instance.user.id).catch(() => null);
-    redirect(homeFor(profile));
+    try {
+      const profile = await ensureProfile(instance.user);
+      redirect(homeFor(profile));
+    } catch (err) {
+      setMessage(err?.message || "Could not load your account", "error");
+    }
     return;
   }
-
-  clearBounces();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -49,8 +51,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await instance.setActive({ session: attempt.createdSessionId });
 
-      clearBounces();
-      const profile = await loadProfile(instance.user?.id).catch(() => null);
+      const profile = await ensureProfile(instance.user);
       redirect(homeFor(profile));
     } catch (err) {
       setMessage(err?.errors?.[0]?.longMessage || err?.message || "Could not sign in", "error");

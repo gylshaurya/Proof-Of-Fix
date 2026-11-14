@@ -4,16 +4,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign in — Proof of Fix</title>
+  <title>Sign in | Proof of Fix</title>
+  <script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem("pof-theme-v2")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";try{if(localStorage.getItem("pof-session"))d.classList.add("signed-in")}catch(e){}})();</script>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://many-whippet-98.clerk.accounts.dev" crossorigin />
+  <link rel="preload" as="script" crossorigin="anonymous" href="https://many-whippet-98.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
   <link rel="stylesheet" href="../css/ui.css" />
   <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="modulepreload" href="../js/lib/auth.js" />
+  <link rel="modulepreload" href="../js/config.js" />
+  <link rel="modulepreload" href="../js/lib/session.js" />
+  <link rel="modulepreload" href="../js/lib/db.js" />
+  <link rel="modulepreload" href="../js/lib/ui.js" />
+  <link rel="modulepreload" href="../js/lib/dom.js" />
+  <link rel="modulepreload" href="../js/lib/theme.js" />
 </head>
 
 <body class="auth">
   <section class="auth-panel">
     <div class="auth-form-panel">
       <a class="auth-brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <img class="brand-mark" src="../assets/logo.svg" alt="" width="26" height="26" />
         Proof of Fix
       </a>
 
@@ -41,7 +56,7 @@
   <aside class="auth-panel auth-aside">
     <div class="glow" aria-hidden="true"></div>
     <div class="auth-aside-inner">
-      <p class="auth-quote">Half the budget moves on day one. The rest waits for your vote.</p>
+      <p class="auth-quote">Use your account to report problems, take part in voting, and review completed repairs.</p>
       <ul class="auth-points">
         <li>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"

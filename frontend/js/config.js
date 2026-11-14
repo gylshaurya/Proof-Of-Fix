@@ -1,12 +1,12 @@
 export const CLERK_PUBLISHABLE_KEY = "pk_test_bWFueS13aGlwcGV0LTk4LmNsZXJrLmFjY291bnRzLmRldiQ";
 
-export const DATABASE_URL = "postgresql://authenticated@ep-muddy-dream-azv15q0i-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+export const DATA_API_URL = "https://ep-muddy-dream-azv15q0i.apirest.c-3.ap-southeast-1.aws.neon.tech/neondb/rest/v1";
 
 export const BLOB_UPLOAD_ENDPOINT = "/api/upload";
 
-export const VOTING_ADDRESS = "0x5b73c5498c1e3b4dba84de0f1833c4a029d90519";
-export const TREASURY_ADDRESS = "0x7fa9385be102ac3eac297483dd6233d62b3e1496";
-export const DEPLOY_BLOCK = 0;
+export const VOTING_ADDRESS = "0x712a93e2d1a1d8c6e7b8067e32a820c44a0d5572";
+export const TREASURY_ADDRESS = "0xd1320ebe840f42956d3aa3d0edd2b02b9bb92a40";
+export const DEPLOY_BLOCK = 11615160;
 
 export const INR_PER_ETH = 200000;
 

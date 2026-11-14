@@ -145,7 +145,7 @@ contract TreasuryTest is Test {
         treasury.createEscrow{value: 10 ether}(PROBLEM, contractor);
 
         vm.deal(address(this), 3 ether);
-        (bool ok, ) = address(treasury).call{value: 3 ether}("");
+        (bool ok,) = address(treasury).call{value: 3 ether}("");
         assertTrue(ok);
 
         assertEq(treasury.available(), 3 ether);

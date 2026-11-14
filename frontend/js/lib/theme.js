@@ -1,4 +1,4 @@
-const KEY = "pof-theme";
+const KEY = "pof-theme-v2";
 
 export function storedTheme() {
   try {
@@ -19,8 +19,7 @@ export function applyTheme(theme) {
 
 export function initTheme() {
   const saved = storedTheme();
-  const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-  document.documentElement.dataset.theme = saved || (prefersLight ? "light" : "dark");
+  document.documentElement.dataset.theme = saved || "light";
 }
 
 export function bindThemeToggle(selector = "#themeToggle") {
