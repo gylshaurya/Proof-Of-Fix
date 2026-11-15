@@ -303,7 +303,14 @@
 
 .issue-card:hover .issue-media img { transform: scale(1.045); }
 
-.issue-media .badge { position: absolute; top: 12px; left: 12px; backdrop-filter: blur(8px); }
+.issue-media .badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  /* Solid backing so the label stays readable on any photo */
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
 
 .issue-body { display: grid; gap: 8px; padding: 17px 18px 18px; flex: 1; align-content: start; }
 .issue-body h3 { font-size: 15px; font-weight: 650; letter-spacing: -0.02em; }
