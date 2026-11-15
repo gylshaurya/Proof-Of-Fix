@@ -82,10 +82,16 @@ $$;
 create or replace function public.guard_profile_update()
 returns trigger
 language plpgsql
-security definer
 set search_path = public
 as $$
 begin
+  -- Direct connections (npm run make-admin, seed, the SQL console) run as the
+  -- database owner and are trusted. Requests from the app arrive as the
+  -- authenticated or anonymous role and go through the checks below.
+  if current_user not in ('authenticated', 'anonymous') then
+    return new;
+  end if;
+
   if public.is_admin() then
     return new;
   end if;
@@ -107,13 +113,19 @@ create trigger profiles_guard_roles
 create or replace function public.guard_problem_update()
 returns trigger
 language plpgsql
-security definer
 set search_path = public
 as $$
 declare
   caller_wallet text;
   assigned_contractor boolean;
 begin
+  -- Direct connections (npm run make-admin, seed, the SQL console) run as the
+  -- database owner and are trusted. Requests from the app arrive as the
+  -- authenticated or anonymous role and go through the checks below.
+  if current_user not in ('authenticated', 'anonymous') then
+    return new;
+  end if;
+
   if public.is_admin() then
     return new;
   end if;
